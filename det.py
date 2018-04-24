@@ -15,17 +15,19 @@ from inspect import getmembers, isfunction
 import detfile
 from detcord.actions import ActionGroup
 
-def main():
+def main(actions):
     env = detfile.env
-    if env.get('hosts', False):
-        for host in env['hosts']:
+    for host in env['hosts']:
+        for action in actions:
             env['current_host'] = host
             Action = ActionGroup(
                 host = host,
                 user = env['user'],
                 password = env['pass']
             )
-            getattr(detfile, sys.argv[1])(Action)
+            func = getattr(detfile, action)
+            func.__globals__["Action"] = Action
+            func()
             Action.close()
 
 if __name__ == '__main__':
@@ -55,11 +57,12 @@ if __name__ == '__main__':
         print("Valid actions for this detfile are:\n\t{}".format("\n\t".join(func_strings)))
         quit()
 
-    for action in sys.argv[1:]:
+    actions = sys.argv[1:]
+    for action in actions:
         if action not in [f[0] for f in action_functions]:
             raise InvalidDetfile("Not a valid action in the detfile: {}".format(action))
     # Make sure we have set hosts for the detfile
     if not detfile.env.get("hosts", False):
         raise InvalidDetfile("No hosts specified in the detfile environment")
     # Actually run the actions
-    main()
+    main(actions)
