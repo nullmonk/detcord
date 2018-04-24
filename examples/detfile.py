@@ -8,8 +8,8 @@ from detcord.actions import action, run, local, put, get, display, script
 
 
 env = {}
-env['pass'] = 'micah'
-env['user'] = 'micah'
+env['pass'] = 'root'
+env['user'] = 'toor'
 env['hosts'] = ['192.168.177.161']
 
 @action
