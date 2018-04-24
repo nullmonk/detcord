@@ -6,7 +6,7 @@ Micah Martin - knif3
 
 from detcord.actions import ActionGroup
 env = {}
-env['pass'] = 'mich'
+env['pass'] = 'micah'
 env['user'] = 'micah'
 
 def main(host):
@@ -15,7 +15,9 @@ def main(host):
         user = env['user'],
         password = env['pass']
     )
-    stdout, stderr = group.run("whoami")
-    print("[{}]".format(host), stdout.strip(), stderr.strip())
+    ret = group.script("bash", "echo this is valid\nThis is an error")
+    group.display(ret)
+    stdout, stderr = group.script("bash", "whoami")
+    group.display(stdout, stderr)
 
-main("192.168.177.161")
+main("192.168.3.29")

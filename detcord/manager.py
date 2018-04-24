@@ -32,7 +32,8 @@ class Manager(object):
             raise HostNotFound("{} not in Manager".format(host))
         con = self.manager[host].get('ssh', None)
         if con is None:
-            self.manager[host]['ssh'] = self.connect(host)
+            con = self.connect(host)
+            self.manager[host]['ssh'] = con
         return con
 
     def connect(self, host):
