@@ -24,8 +24,8 @@ from detcord.actions import action, run
 ```
 
 Set up a simple environment for the detfile. Currently the environment supports the following values
-| Key          | Required | Description
-|
+
+| Key          | Required | Description                                       |
 |--------------|----------|---------------------------------------------------|
 | hosts        | Yes      | An array of hosts to run the actions against.     |
 | user         | Yes      | The username to use on each host                  |
