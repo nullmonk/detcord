@@ -33,7 +33,7 @@ class ActionGroup(object):
 
     def script(self, command, stdin=None):
         connection = None
-        for i in range(3):
+        for i in range(2):
             try:
                 connection = MainManager.getSSHConnection(self.host)
             except HostNotFound:
@@ -63,6 +63,41 @@ class ActionGroup(object):
         stderr = stderr.decode('utf-8')
         return stdout, stderr
 
+    def put(self, local, remote):
+        '''
+        Put a local file onto the remote host
+        '''
+        connection = None
+        for i in range(2):
+            try:
+                connection = MainManager.getSSHConnection(self.host)
+            except HostNotFound:
+                MainManager.addHost(self.host, self.port, self.user, self.password)
+                continue
+            break
+        if not connection:
+            raise Exception("No Connection")
+        connection = connection.open_sftp()
+        connection.put(local, remote)
+
+    def get(self, remote, local):
+        '''
+        Get a remote file and save it locally
+        '''
+        connection = None
+        for i in range(2):
+            try:
+                connection = MainManager.getSSHConnection(self.host)
+            except HostNotFound:
+                MainManager.addHost(self.host, self.port, self.user, self.password)
+                continue
+            break
+        if not connection:
+            raise Exception("No Connection")
+        connection = connection.open_sftp()
+        connection.get(remote, local)
+
+
     def display(self, stdout, stderr=()):
         if not isinstance(stdout, str):
             obj = stdout
@@ -75,3 +110,6 @@ class ActionGroup(object):
         for line in stderr.strip().split('\n'):
             if line:
                 print("[{}] ERROR".format(self.host),line)
+
+    def close(self):
+        pass
