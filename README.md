@@ -1,0 +1,2 @@
+# detcord
+autopwn + deployment
