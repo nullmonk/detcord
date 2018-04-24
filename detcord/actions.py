@@ -1,9 +1,11 @@
 '''
 Actions that you can run against a host
 '''
+from subprocess import Popen, PIPE
+import shlex
+import socket
 from . import MainManager
 from .exceptions import *
-import socket
 
 class ActionGroup(object):
     '''
@@ -14,6 +16,21 @@ class ActionGroup(object):
         self.port = port
         self.user = user
         self.password = password
+
+    def build_return(self, host="", stdout="", stderr="", status=0, command=""):
+        '''
+        Build a dictionary to be returned as the result
+        '''
+        if host == "":
+            host = self.host
+        ret = {
+            'host': host,
+            'stdout': stdout,
+            'stderr': stderr,
+            'status': status,
+            'command': command
+        }
+        return ret
 
     def run(self, command):
         connection = None
@@ -29,7 +46,7 @@ class ActionGroup(object):
         stdin, stdout, stderr = connection.exec_command(command)
         stdout = stdout.read().decode('utf-8')
         stderr = stderr.read().decode('utf-8')
-        return stdout, stderr
+        return self.build_return("", stdout, stderr, 0, "run")
 
     def script(self, command, stdin=None):
         connection = None
@@ -61,7 +78,7 @@ class ActionGroup(object):
             stderr = b''
         stdout = stdout.decode('utf-8')
         stderr = stderr.decode('utf-8')
-        return stdout, stderr
+        return self.build_return("", stdout, stderr, 0, "script")
 
     def put(self, local, remote):
         '''
@@ -79,6 +96,7 @@ class ActionGroup(object):
             raise Exception("No Connection")
         connection = connection.open_sftp()
         connection.put(local, remote)
+        return self.build_return("", "", "", 0, "put")
 
     def get(self, remote, local):
         '''
@@ -96,20 +114,35 @@ class ActionGroup(object):
             raise Exception("No Connection")
         connection = connection.open_sftp()
         connection.get(remote, local)
+        return self.build_return("", "", "", 0, "get")
 
 
-    def display(self, stdout, stderr=()):
-        if not isinstance(stdout, str):
-            obj = stdout
-            stdout = obj[0]
-            if len(obj) > 1:
-                stderr = obj[1]
-        for line in stdout.strip().split('\n'):
+    def local(self, command, stdin=None):
+        '''
+        Execute a command. Shove stdin into it if requested
+        '''
+        proc = Popen(shlex.split(command), shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
+                     close_fds=True)
+        if stdin:
+            proc.write(stdin)
+        stdout = proc.stdout.read().decode("utf-8")
+        stderr = proc.stderr.read().decode("utf-8")
+        status = proc.wait()
+        return self.build_return("localhost", stdout, stderr, status, "local")
+
+
+    def display(self, obj):
+        '''
+        Pretty print the output of an action
+        '''
+        host = obj['host']
+        for line in obj['stdout'].strip().split('\n'):
             if line:
-                print("[{}]".format(self.host),line)
-        for line in stderr.strip().split('\n'):
+                print("[{}]".format(host),line)
+        for line in obj['stderr'].strip().split('\n'):
             if line:
-                print("[{}] ERROR".format(self.host),line)
+                print("[{}] ERROR".format(host),line)
+
 
     def close(self):
         pass

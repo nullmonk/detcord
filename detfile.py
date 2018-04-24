@@ -19,12 +19,12 @@ def test(Action):
     Action.display(ret)
     # You can call simple actions on the remote host
     # You can pull out the direct stdout and stderr
-    stdout, stderr = Action.run("whoami")
+    ret = Action.local("whoami")
     # Display can handle stdout and stderr
-    Action.display(stdout, stderr)
+    Action.display(ret)
     # Put and push files to/from the server
-    Action.put("README.md", "/tmp/README")
-    Action.get("/tmp/README", "test.swp")
+    #Action.put("README.md", "/tmp/README")
+    #Action.get("/tmp/README", "test.swp")
 
 
 
