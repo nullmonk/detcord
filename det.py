@@ -6,10 +6,10 @@ Micah Martin - knif3
 
 import os.path
 import sys
-from detcord.exceptions import DetfileNotFound
+from detcord.exceptions import InvalidDetfile
 
 if not os.path.exists("detfile.py"):
-    raise DetfileNotFound("Missing detfile in the current directory")
+    raise InvalidDetfile("Missing detfile in the current directory")
 
 from inspect import getmembers, isfunction
 import detfile
@@ -17,7 +17,7 @@ from detcord.actions import ActionGroup
 
 def main():
     env = detfile.env
-    if env.get('hosts', False) and len(sys.argv) > 1:
+    if env.get('hosts', False):
         for host in env['hosts']:
             env['current_host'] = host
             Action = ActionGroup(
@@ -29,13 +29,23 @@ def main():
             Action.close()
 
 if __name__ == '__main__':
-    # Parse the inputs
-    valid_function = [o for o in getmembers(detfile) if isfunction(o[1])]
+    # Parse the actions in the detfile
+    action_functions = []
+    for func in getmembers(detfile):
+        # Make sure the function is decorated as an action
+        if getattr(func[1], 'detcord_action', False):
+            #('action',False):
+            action_functions += [func]
+
+    # If we have no runnable action, error out
+    if not action_functions:
+        raise InvalidDetfile("No runnable actions in detfile.py")
+
     if len(sys.argv) < 2:
         # Print valid functions that the detfile has
         print("USAGE: {} <action>[..<action>]")
         func_strings = []
-        for function in valid_function:
+        for function in action_functions:
             docstring = function[1].__doc__
             if docstring:
                 docstring = docstring.strip().split('\n')[0].strip()
@@ -46,7 +56,10 @@ if __name__ == '__main__':
         quit()
 
     for action in sys.argv[1:]:
-        if action not in [f[0] for f in valid_function]:
-            raise Exception("Not a valid action in the detfile: {}".format(action))
+        if action not in [f[0] for f in action_functions]:
+            raise InvalidDetfile("Not a valid action in the detfile: {}".format(action))
+    # Make sure we have set hosts for the detfile
+    if not detfile.env.get("hosts", False):
+        raise InvalidDetfile("No hosts specified in the detfile environment")
     # Actually run the actions
     main()

@@ -2,9 +2,9 @@
 Random exceptions for the program
 '''
 
-class DetfileNotFound(Exception):
+class InvalidDetfile(Exception):
     '''
-    We need a detfile to run the program
+    We need a detfile
     '''
     pass
 
