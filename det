@@ -14,7 +14,7 @@ if not os.path.exists("detfile.py"):
 
 from inspect import getmembers, isfunction
 import detfile
-import detcord.actions
+import detcord.commands as COMS
 from detcord.actiongroup import ActionGroup
 
 def main(actions):
@@ -29,7 +29,7 @@ def main(actions):
             )
             # Super ghetto code to abstract the action from the user
             func = getattr(detfile, action)
-            detcord.actions.Action = Action
+            COMS.Action = Action
             func()
             Action.close()
 

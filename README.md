@@ -21,7 +21,7 @@ Usage is fairly simple for running basic functions against a host. Create a `det
 the actions that you will need for your deployment. In addition to each action, you will need to
 import the `action` decorator
 ```python
-from detcord.actions import action, run, display
+from detcord.commands import action, run, display
 ```
 
 Set up a simple environment for the detfile. Currently the environment supports the following values
@@ -61,7 +61,7 @@ the function docstring is used as the description.
 
 
 ## Actions
-Currently the following actions can be imported and run from a detfile
+Currently the following commands can be imported and run from a detfile
 
 | Function | Args                  | Description                                               |
 |----------|-----------------------|-----------------------------------------------------------|
