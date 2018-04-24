@@ -24,13 +24,13 @@ from detcord.actions import action, run
 ```
 
 Set up a simple environment for the detfile. Currently the environment supports the following values
-
-| Key          | Description                                                                  |
-|--------------|------------------------------------------------------------------------------|
-| hosts        | An array of hosts to run the actions against. Must be specified              |
-| user         | The username to use on each host                                             |
-| pass         | The password to use on each host                                             |
-| current_host | The current host that is being run on. Can be called from an action function |
+| Key          | Required | Description
+|
+|--------------|----------|---------------------------------------------------|
+| hosts        | Yes      | An array of hosts to run the actions against.     |
+| user         | Yes      | The username to use on each host                  |
+| pass         | Yes      | The password to use on each host                  |
+| current_host | No       | The current host that the action is being run on. |
 
 ```python
 env = {}
