@@ -10,7 +10,7 @@ from detcord.actions import ActionGroup
 env = {}
 env['pass'] = 'micah'
 env['user'] = 'micah'
-env['curr_host'] = '192.168.177.161'
+env['hosts'] = ['192.168.177.161']
 
 def test(Action):
     # You can pass a script to be piped into another program
