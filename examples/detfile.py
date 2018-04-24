@@ -30,8 +30,8 @@ def test():
     # Display can handle stdout and stderr
     display(ret)
     # Put and push files to/from the server
-    #put("README.md", "/tmp/README")
-    #get("/tmp/README", "test.swp")
+    put("../README.md", "/tmp/README")
+    get("/tmp/README", "test.swp")
 
 def support_action():
     '''
