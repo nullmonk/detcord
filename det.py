@@ -13,7 +13,8 @@ if not os.path.exists("detfile.py"):
 
 from inspect import getmembers, isfunction
 import detfile
-from detcord.actions import ActionGroup
+import detcord.actions
+from detcord.actiongroup import ActionGroup
 
 def main(actions):
     env = detfile.env
@@ -25,8 +26,9 @@ def main(actions):
                 user = env['user'],
                 password = env['pass']
             )
+            # Super ghetto code to abstract the action from the user
             func = getattr(detfile, action)
-            func.__globals__["Action"] = Action
+            detcord.actions.Action = Action
             func()
             Action.close()
 
