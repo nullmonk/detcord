@@ -9,7 +9,7 @@ implementations will allow running detcord as a server. The server functionality
 auto-registering of hosts, autopwn capabilities, and perhaps credential bruteforcing.
 
 
-Influenced heavily from [fabric](https://github.com/fabric/fabric). I initially used this framework
+Influenced heavily from [fabric](https://github.com/fabric/fabric). I initially used the fabric framework
 for my deployment but quickly wanted to make it a little more lightweight and specific to what I
 wanted to do. In addition, fabric did not support Python 3+ and did not allow for certain type of
 actions to be run against a host.
@@ -20,7 +20,6 @@ Usage is fairly simple for running basic functions against a host. Create a `det
 the actions that you will need for your deployment. In addition to each action, you will need to
 import the `action` decorator
 ```python
-# detfile.py
 from detcord.actions import action, run
 ```
 
@@ -45,5 +44,5 @@ You may now write a simple function to run against a host
 @action
 def HelloWorld():
     ret = run("whoami")
-    print(ret['stdout'])
+    print(env['current_host'], ret['stdout'])
 ```
