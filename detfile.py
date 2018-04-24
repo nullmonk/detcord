@@ -25,17 +25,3 @@ def test(Action):
     # Put and push files to/from the server
     #Action.put("README.md", "/tmp/README")
     #Action.get("/tmp/README", "test.swp")
-
-
-
-def main():
-    group = ActionGroup(
-        host = env['curr_host'],
-        user = env['user'],
-        password = env['pass']
-    )
-    test(group)
-    group.close()
-
-if __name__ == '__main__':
-    main()
