@@ -13,6 +13,11 @@ env['user'] = 'micah'
 env['hosts'] = ['192.168.177.161']
 
 def test(Action):
+    '''
+    A test action for the detcord project
+
+    Showcases the commands that can be run
+    '''
     # You can pass a script to be piped into another program
     ret = Action.script("bash", "echo this is valid\nThis is an error")
     # Display can handle the direct output of a command
