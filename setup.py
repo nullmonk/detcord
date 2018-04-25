@@ -30,7 +30,7 @@ setup(name='detcord',
       install_requires=[
           'paramiko'
       ],
-      scripts=["detonate"],
+      scripts=["bin/detonate"],
       project_urls={
           'Bug Reports': 'https://github.com/micahjmartin/detcord/issues',
           'Source': 'https://github.com/micahjmartin/detcord/',
