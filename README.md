@@ -13,7 +13,7 @@ for my deployment but quickly wanted to make it a little more lightweight and sp
 wanted to do. In addition, fabric did not support Python 3+ and did not allow for certain type of
 actions to be run against a host.
 
-> Lots of improvements will be made to this tool over time. Ii will try to keep the `master` branch
+> Lots of improvements will be made to this tool over time. I will try to keep the `master` branch
 > stable but occasionally errors may occur
 
 ## Usage

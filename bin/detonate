@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 '''
 detcord : Action execution on hosts
 
@@ -11,6 +11,7 @@ from detcord.exceptions import InvalidDetfile
 
 if not os.path.exists("detfile.py"):
     raise InvalidDetfile("Missing detfile in the current directory")
+sys.path.insert(0, os.getcwd())
 
 from inspect import getmembers, isfunction
 import detfile
