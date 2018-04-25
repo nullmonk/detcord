@@ -71,7 +71,7 @@ class ActionGroup(object):
                 stderr = chan.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
                     print("Writing password")
-                    chan.sendall("micah\n")
+                    chan.sendall(self.password + "\n")
             except:
                 pass
         else:
