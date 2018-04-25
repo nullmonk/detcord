@@ -48,7 +48,7 @@ class ActionGroup(object):
         stderr = stderr.read().decode('utf-8')
         return self.build_return("", stdout, stderr, 0, "run")
 
-    def script(self, command, stdin=None):
+    def script(self, command, stdin=None, sudo = False):
         connection = None
         for i in range(2):
             try:
@@ -62,7 +62,20 @@ class ActionGroup(object):
 
         transport = connection.get_transport()
         channel = transport.open_channel("session")
-        channel.exec_command(command)
+        # Send data into sudo if required
+        if sudo:
+            print("Running as sudo"
+            chan.exec_command("sudo -Sp 'detprompt' " + command)
+            chan.settimeout(1)
+            try:
+                stderr = chan.recv_stderr(3000).decode('utf-8')
+                if stderr == "detprompt":
+                    print("Writing password")
+                    chan.sendall("micah\n")
+            except:
+                pass
+        else:
+            channel.exec_command(command)
         if stdin:
             channel.sendall(stdin)
         channel.shutdown_write()
