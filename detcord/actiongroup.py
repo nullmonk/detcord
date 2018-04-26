@@ -1,26 +1,71 @@
-'''
+"""
 Actions that you can run against a host
-'''
+"""
+# pylint: disable=too-many-arguments,fixme
+import socket
 from subprocess import Popen, PIPE
 import shlex
-import socket
-from . import MainManager
-from .exceptions import *
+from . import CONNECTION_MANAGER
+from .exceptions import HostNotFound, NoConnection
+
 
 class ActionGroup(object):
-    '''
+    """
     Create an action group to run against a host
-    '''
+    """
     def __init__(self, host, port=22, user=None, password=None):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
 
+    def get_connection(self):
+        """Get an SSH connection from the manager, if one doesn't exist,
+        then create a new connection and return that. If a connection can not
+        be made then raise an exception.
+
+        Returns:
+            paramiko.SSHClient: The paramiko connection that we will work with
+
+        Raises:
+            NoConnection: Raised when a connection can not be made after
+            several tries
+        TODO: Convert into paramiko transports instead of SSHConnections
+        """
+        connection = None
+        for _ in range(2):
+            try:
+                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
+            except HostNotFound:
+                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
+                continue
+            break
+        if not connection:
+            raise NoConnection("Cannot create a connection for " + self.host)
+        return connection
+
+
     def build_return(self, host="", stdout="", stderr="", status=0, command=""):
-        '''
-        Build a dictionary to be returned as the result
-        '''
+        """Build a dictionary to be returned as the result of a command.
+        This dictionary is meant to be the output of all "command" like functions
+
+        Args:
+            host    (str, optional): The host that the command ran on. Defaults to self.host
+            stdout  (str, optional): The stdout of the command run. Defaults to blank.
+            stderr  (str, optional): The stderr of the command run. Defaults to blank.
+            status  (int, optional): The return status of the command. Defaults to 0
+            command (str, optional): The name of the command that was run. Defaults to blank
+
+        Returns:
+            dict: Returns a dictionary object containing the information.
+                {
+                    'host': host,
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'status': status,
+                    'command': command
+                }
+        """
         if host == "":
             host = self.host
         ret = {
@@ -33,17 +78,25 @@ class ActionGroup(object):
         return ret
 
     def run(self, command):
-        connection = None
-        for i in range(3):
-            try:
-                connection = MainManager.getSSHConnection(self.host)
-            except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
-        stdin, stdout, stderr = connection.exec_command(command)
+        """Run a program on the remote host.
+
+        Args:
+            command     (str):  The command to run on the remote host
+
+        Returns:
+            dict: Returns a dictionary object containing information about the command
+            including the host, stdout, stderr, status code, and the command run on the
+            remote host.
+                {
+                    'host': host,
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'status': status,
+                    'command': command
+                }
+        """
+        connection = self.get_connection()
+        _, stdout, stderr = connection.exec_command(command)
         stdout = stdout.read().decode('utf-8')
         stderr = stderr.read().decode('utf-8')
         return self.build_return("", stdout, stderr, 0, "run")
@@ -74,40 +127,48 @@ class ActionGroup(object):
                     'command': command
                 }
         """
-        def printlive(value: str) -> None:
-            """Print out the line to the console
+        def send_sudo(channel, command, password):
+            """Upgrade the command to sudo using the given password.
 
             Args:
-                value: The text to write
+                channel (paramiko.channel): The channel to send the connection over
+                command (str): The command to run on the remote host
+                password (str): The password to use for sudo
 
-            Returns:
-                None
+            Return:
+                bool: Whether or not the sudo worked
             """
-            print("[{}] live:".format(self.host), str(value.decode('utf-8').strip()))
-        # Get the connection from the connection manager
-        connection = None
-        for i in range(2):
-            try:
-                connection = MainManager.getSSHConnection(self.host)
-            except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
-        transport = connection.get_transport()
-        channel = transport.open_channel("session")
-        # Use sudo if asked, pass in the correct password to the sudo binary
-        if sudo:
-            print("Running as sudo")
-            channel.exec_command("sudo -Sp 'detprompt' " + command)
+            channel.exec_command("sudo -kSp 'detprompt' " + command)
             channel.settimeout(1)
             try:
                 stderr = channel.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
-                    channel.sendall(self.password + "\n")
-            except:
-                pass
+                    print("sending pass")
+                    channel.sendall(password + "\n")
+                return True
+            # TODO: Find out what to catch here
+            except socket.timeout:
+                # Timeout mean no prompt which means root
+                return True
+            except Exception as exception:  # pylint: disable=broad-except
+                print(exception)
+                return False
+        # Get the connection from the connection manager
+        connection = self.get_connection()
+        transport = connection.get_transport()
+        channel = transport.open_channel("session")
+        # Keep track of all our buffers
+        retval = {
+            'host': self.host,
+            'stdout': "",
+            'stderr': "",
+            'status': 0,
+            'command': command
+        }
+        # Use sudo if asked, pass in the correct password to the sudo binary
+        if sudo:
+            if not send_sudo(channel, command, self.password):
+                print("[!] Cannot run as sudo")
         else:
             channel.exec_command(command)
 
@@ -117,131 +178,113 @@ class ActionGroup(object):
         # If we are in interactive mode, don't shutdown stdin until later
         if not interactive:
             channel.shutdown_write()
-        # Read the output a single byte at a time
-        BUFF = 1
         # Wait for the process to close or errors to happen
         channel.settimeout(1)
-        # If output if not silenced, create tmp strings for the printed output
-        if not silent:
-            tmp_stdout = b''
-            tmp_stderr = b''
-        stdout = b''
-        stderr = b''
+
         # Start reading data until the process dies
         while not channel.exit_status_ready():
-            # Check if the processes can read data
-            outr = channel.recv_ready()
-            if outr:
-                val = channel.recv(BUFF)
-                stdout += val
-                # If we are live printing, print each new line
-                if not silent and val == b'\n':
-                    printlive(tmp_stdout)
-                    tmp_stdout = b''
-                else:
-                    tmp_stdout += val
-            errr = channel.recv_stderr_ready()
-            if errr:
-                val = channel.recv_stderr(BUFF)
-                stderr += val
-                if not silent and val == b'\n':
-                    printlive(tmp_stderr)
-                    tmp_stderr = b''
-                else:
-                    tmp_stderr += val
+            # pylint: disable=undefined-variable
+            stdout, stderr = ActionGroup._read_buffers(channel)
+            retval['stdout'] += stdout
+            retval['stderr'] += stderr
+            # Print the lines if we can
+            if not silent and stdout:
+                print("[{}] [+]:".format(self.host), str(stdout.strip()))
+            if not silent and stderr:
+                print("[{}] [-]:".format(self.host), str(stderr.strip()))
         # Wait for the process to die
-        exitstatus = channel.recv_exit_status()
+        retval['status'] = channel.recv_exit_status()
         # Process all data that came through after the proc died
-        outr = channel.recv_ready()
-        errr = channel.recv_stderr_ready()
-        # Read until there is no more
-        while outr or errr:
-            if outr:
-                val = channel.recv(BUFF)
-                stdout += val
-                # If we are live printing, print each new line
-                if not silent and val == b'\n':
-                    printlive(tmp_stdout)
-                    tmp_stdout = b''
-                else:
-                    tmp_stdout += val
-            if errr:
-                val = channel.recv_stderr(BUFF)
-                stderr += val
-                if not silent and val == b'\n':
-                    printlive(tmp_stderr)
-                    tmp_stderr = b''
-                else:
-                    tmp_stderr += val
-            outr = channel.recv_ready()
-            errr = channel.recv_stderr_ready()
-        # Get the final output ready to go
-        stdout = stdout.decode('utf-8')
-        stderr = stderr.decode('utf-8')
-        return self.build_return("", stdout, stderr, exitstatus, command.strip())
+        while channel.recv_ready() or channel.recv_stderr_ready():
+            # pylint: disable=undefined-variable
+            stdout, stderr = ActionGroup._read_buffers(channel)
+            retval['stdout'] += stdout
+            retval['stderr'] += stderr
+            # Print the lines if we can
+            if not silent and stdout:
+                print("[{}] [+]:".format(self.host), str(stdout.strip()))
+            if not silent and stderr:
+                print("[{}] [-]:".format(self.host), str(stderr.strip()))
+        # Close the channel
+        channel.close()
+        return retval
 
     def put(self, local, remote):
-        '''
+        """
         Put a local file onto the remote host
-        '''
-        connection = None
-        for i in range(2):
-            try:
-                connection = MainManager.getSSHConnection(self.host)
-            except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
+        """
+        connection = self.get_connection()
         connection = connection.open_sftp()
         connection.put(local, remote)
         return self.build_return("", "", "", 0, "put")
 
     def get(self, remote, local):
-        '''
+        """
         Get a remote file and save it locally
-        '''
-        connection = None
-        for i in range(2):
-            try:
-                connection = MainManager.getSSHConnection(self.host)
-            except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
+        """
+        connection = self.get_connection()
         connection = connection.open_sftp()
         connection.get(remote, local)
         return self.build_return("", "", "", 0, "get")
 
 
     def local(self, command, stdin=None):
-        '''
+        """
         Execute a command. Shove stdin into it if requested
-        '''
+        """
         proc = Popen(shlex.split(command), shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      close_fds=True)
         if stdin:
-            proc.write(stdin)
+            proc.stdin.write(stdin)
         stdout = proc.stdout.read().decode("utf-8")
         stderr = proc.stderr.read().decode("utf-8")
         status = proc.wait()
         return self.build_return("localhost", stdout, stderr, status, "local")
 
-    def display(self, obj):
-        '''
+    @staticmethod
+    def display(obj):
+        """
         Pretty print the output of an action
-        '''
+        """
         host = obj.get('host', "")
         for line in obj['stdout'].strip().split('\n'):
             if line:
-                print("[{}]".format(host),line)
+                print("[{}]".format(host), line)
         for line in obj['stderr'].strip().split('\n'):
             if line:
-                print("[{}] ERROR".format(host),line)
+                print("[{}] ERROR".format(host), line)
+
+    @staticmethod
+    def _read_buffers(channel):
+        """
+        Read a line of stdout and stderr from the channel.
+        Return the stdin and stdout as strings
+
+        Args:
+            channel (paramiko.Channel): The channel to read from
+
+        Returns:
+            tuple: A tuple containing the stdout and stderr
+        """
+        stdout = b''
+        stderr = b''
+        char = None
+        # Loop until there is nothing to get or we hit a newline
+        out_ready = channel.recv_ready()
+        while out_ready and char != b'\n':
+            char = channel.recv(1)
+            stdout += char
+            out_ready = channel.recv_ready()
+        # Do the same for stderr
+        err_ready = channel.recv_stderr_ready()
+        while err_ready and char != b'\n':
+            char = channel.recv_stderr(1)
+            stderr += char
+            err_ready = channel.recv_stderr_ready()
+        return stdout.decode('utf-8'), stderr.decode('utf-8')
 
 
     def close(self):
+        """What to do when closing the object?
+        """
         pass

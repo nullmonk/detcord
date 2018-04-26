@@ -8,6 +8,12 @@ class InvalidDetfile(Exception):
     '''
     pass
 
+class NoConnection(Exception):
+    '''
+    We need a detfile
+    '''
+    pass
+
 
 class HostNotFound(Exception):
     '''
