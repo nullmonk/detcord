@@ -145,8 +145,6 @@ class ActionGroup(object):
                 if stderr == "detprompt":
                     print("sending pass")
                     channel.sendall(password + "\n")
-                else:
-                    return False
                 return True
             # TODO: Find out what to catch here
             except socket.timeout:
