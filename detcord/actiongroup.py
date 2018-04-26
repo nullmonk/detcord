@@ -1,10 +1,9 @@
 """
 Actions that you can run against a host
 """
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,fixme
 from subprocess import Popen, PIPE
 import shlex
-import socket
 from . import CONNECTION_MANAGER
 from .exceptions import HostNotFound, NoConnection
 
@@ -19,7 +18,7 @@ class ActionGroup(object):
         self.user = user
         self.password = password
 
-    def get_connection():
+    def get_connection(self):
         """Get an SSH connection from the manager, if one doesn't exist,
         then create a new connection and return that. If a connection can not
         be made then raise an exception.
@@ -33,7 +32,7 @@ class ActionGroup(object):
         TODO: Convert into paramiko transports instead of SSHConnections
         """
         connection = None
-        for i in range(2):
+        for _ in range(2):
             try:
                 connection = CONNECTION_MANAGER.getSSHConnection(self.host)
             except HostNotFound:
@@ -96,7 +95,7 @@ class ActionGroup(object):
                 }
         """
         connection = self.get_connection()
-        stdin, stdout, stderr = connection.exec_command(command)
+        _, stdout, stderr = connection.exec_command(command)
         stdout = stdout.read().decode('utf-8')
         stderr = stderr.read().decode('utf-8')
         return self.build_return("", stdout, stderr, 0, "run")
@@ -156,12 +155,22 @@ class ActionGroup(object):
                 if stderr == "detprompt":
                     channel.sendall(password + "\n")
                 return True
+            # TODO: Find out what to catch here
+            # pylint: disable=bare-except
             except:
                 return False
         # Get the connection from the connection manager
-        connection = get_connection()
+        connection = self.get_connection()
         transport = connection.get_transport()
         channel = transport.open_channel("session")
+        # Keep track of all our buffers
+        retval = {
+            'host': self.host,
+            'stdout': "",
+            'stderr': "",
+            'status': 0,
+            'command': command
+        }
         # Use sudo if asked, pass in the correct password to the sudo binary
         if sudo:
             if not send_sudo(channel, command, self.password):
@@ -175,85 +184,42 @@ class ActionGroup(object):
         # If we are in interactive mode, don't shutdown stdin until later
         if not interactive:
             channel.shutdown_write()
-        # Read the output a single byte at a time
-        BUFF = 1
         # Wait for the process to close or errors to happen
         channel.settimeout(1)
-        # If output if not silenced, create tmp strings for the printed output
-        if not silent:
-            tmp_stdout = b''
-            tmp_stderr = b''
-        stdout = b''
-        stderr = b''
+
         # Start reading data until the process dies
         while not channel.exit_status_ready():
-            # Check if the processes can read data
-            if outr:
-                val = channel.recv(BUFF)
-                stdout += val
-                # If we are live printing, print each new line
-                if not silent and val == b'\n':
-                    printlive(tmp_stdout)
-                    tmp_stdout = b''
-                else:
-                    tmp_stdout += val
-            if errr:
-                val = channel.recv_stderr(BUFF)
-                stderr += val
-                if not silent and val == b'\n':
-                    printlive(tmp_stderr)
-                    tmp_stderr = b''
-                else:
-                    tmp_stderr += val
-            outr = channel.recv_ready()
-            errr = channel.recv_stderr_ready()
+            # pylint: disable=undefined-variable
+            stdout, stderr = _read_buffers(channel)
+            retval['stdout'] += stdout
+            retval['stderr'] += stderr
+            # Print the lines if we can
+            if not silent and stdout:
+                printlive(stdout)
+            if not silent and stderr:
+                printlive(stderr)
         # Wait for the process to die
-        exitstatus = channel.recv_exit_status()
+        retval['status'] = channel.recv_exit_status()
         # Process all data that came through after the proc died
-        outr = channel.recv_ready()
-        errr = channel.recv_stderr_ready()
-        # Read until there is no more
-        while outr or errr:
-            if outr:
-                val = channel.recv(BUFF)
-                stdout += val
-                # If we are live printing, print each new line
-                if not silent and val == b'\n':
-                    printlive(tmp_stdout)
-                    tmp_stdout = b''
-                else:
-                    tmp_stdout += val
-            if errr:
-                val = channel.recv_stderr(BUFF)
-                stderr += val
-                if not silent and val == b'\n':
-                    printlive(tmp_stderr)
-                    tmp_stderr = b''
-                else:
-                    tmp_stderr += val
-            outr = channel.recv_ready()
-            errr = channel.recv_stderr_ready()
-        # Get the final output ready to go
-        stdout = stdout.decode('utf-8')
-        stderr = stderr.decode('utf-8')
+        while channel.recv_ready() or channel.recv_stderr_ready():
+            # pylint: disable=undefined-variable
+            stdout, stderr = _read_buffers(channel)
+            retval['stdout'] += stdout
+            retval['stderr'] += stderr
+            # Print the lines if we can
+            if not silent and stdout:
+                printlive(stdout)
+            if not silent and stderr:
+                printlive(stderr)
         # Close the transport and channels
         transport.close()
-        return self.build_return("", stdout, stderr, exitstatus, command.strip())
+        return retval
 
     def put(self, local, remote):
         """
         Put a local file onto the remote host
         """
-        connection = None
-        for i in range(2):
-            try:
-                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
-            except HostNotFound:
-                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
+        connection = self.get_connection()
         connection = connection.open_sftp()
         connection.put(local, remote)
         return self.build_return("", "", "", 0, "put")
@@ -262,16 +228,7 @@ class ActionGroup(object):
         """
         Get a remote file and save it locally
         """
-        connection = None
-        for i in range(2):
-            try:
-                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
-            except HostNotFound:
-                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
+        connection = self.get_connection()
         connection = connection.open_sftp()
         connection.get(remote, local)
         return self.build_return("", "", "", 0, "get")
@@ -284,13 +241,14 @@ class ActionGroup(object):
         proc = Popen(shlex.split(command), shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      close_fds=True)
         if stdin:
-            proc.write(stdin)
+            proc.stdin.write(stdin)
         stdout = proc.stdout.read().decode("utf-8")
         stderr = proc.stderr.read().decode("utf-8")
         status = proc.wait()
         return self.build_return("localhost", stdout, stderr, status, "local")
 
-    def display(self, obj):
+    @staticmethod
+    def display(obj):
         """
         Pretty print the output of an action
         """
@@ -302,6 +260,37 @@ class ActionGroup(object):
             if line:
                 print("[{}] ERROR".format(host), line)
 
+    @staticmethod
+    def _read_buffers(channel):
+        """
+        Read a line of stdout and stderr from the channel.
+        Return the stdin and stdout as strings
+
+        Args:
+            channel (paramiko.Channel): The channel to read from
+
+        Returns:
+            tuple: A tuple containing the stdout and stderr
+        """
+        stdout = b''
+        stderr = b''
+        char = None
+        # Loop until there is nothing to get or we hit a newline
+        out_ready = channel.recv_ready()
+        while out_ready and char != b'\n':
+            char = channel.recv(1)
+            stdout += char
+            out_ready = channel.recv_ready()
+        # Do the same for stderr
+        err_ready = channel.recv_stderr_ready()
+        while err_ready and char != b'\n':
+            char = channel.recv(1)
+            stderr += char
+            err_ready = channel.recv_stderr_ready()
+        return stdout.decode('utf-8'), stderr.decode('utf-8')
+
 
     def close(self):
+        """What to do when closing the object?
+        """
         pass
