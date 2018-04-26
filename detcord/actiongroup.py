@@ -77,32 +77,8 @@ class ActionGroup(object):
         }
         return ret
 
-    def run(self, command):
-        """Run a program on the remote host.
-
-        Args:
-            command     (str):  The command to run on the remote host
-
-        Returns:
-            dict: Returns a dictionary object containing information about the command
-            including the host, stdout, stderr, status code, and the command run on the
-            remote host.
-                {
-                    'host': host,
-                    'stdout': stdout,
-                    'stderr': stderr,
-                    'status': status,
-                    'command': command
-                }
-        """
-        connection = self.get_connection()
-        _, stdout, stderr = connection.exec_command(command)
-        stdout = stdout.read().decode('utf-8')
-        stderr = stderr.read().decode('utf-8')
-        return self.build_return("", stdout, stderr, 0, "run")
-
-    def script(self, command: str, stdin=None, sudo=False, silent=False, interactive=False) -> dict:
-        """Run a program on the remote host. stdin can be passed into the program for script
+    def run(self, command: str, stdin=None, sudo=False, silent=False, interactive=False) -> dict:
+        """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
         interactive with commands that read from stdin constantly (e.x. 'bash').
 

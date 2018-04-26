@@ -6,9 +6,6 @@ def run(*args, **kwargs):
 def local(*args, **kwargs):
     return Action.local(*args, **kwargs)
 
-def script(*args, **kwargs):
-    return Action.script(*args, **kwargs)
-
 def get(*args, **kwargs):
     return Action.get(*args, **kwargs)
 
