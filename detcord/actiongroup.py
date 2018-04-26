@@ -48,7 +48,43 @@ class ActionGroup(object):
         stderr = stderr.read().decode('utf-8')
         return self.build_return("", stdout, stderr, 0, "run")
 
-    def script(self, command, stdin=None):
+    def script(self, command: str, stdin=None, sudo=False, silent=False, interactive=False) -> dict:
+        """Run a program on the remote host. stdin can be passed into the program for script
+        execution. Interactive mode does not shutdown stdin until the status has closed, do not use
+        interactive with commands that read from stdin constantly (e.x. 'bash').
+
+        Args:
+            command     (str):  The command to run on the remote host
+            stdin       (str, optional):  The stdin to be passed into the running process
+            sudo        (bool, optional): Whether or not the command should be run as sudo.
+                                          Defaults to False.
+            silent      (bool, optional): Whether or not to print the output coming from the hosts.
+                                          Defaults to False.
+            interactive (bool, optional): Whether or not the program requires further interaction.
+                                          Defaults to False.
+        Returns:
+            dict: Returns a dictionary object containing information about the command
+            including the host, stdout, stderr, status code, and the command run on the
+            remote host.
+                {
+                    'host': host,
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'status': status,
+                    'command': command
+                }
+        """
+        def printlive(value: str) -> None:
+            """Print out the line to the console
+
+            Args:
+                value: The text to write
+
+            Returns:
+                None
+            """
+            print("[{}] live:".format(self.host), str(value.decode('utf-8').strip()))
+        # Get the connection from the connection manager
         connection = None
         for i in range(2):
             try:
@@ -59,26 +95,90 @@ class ActionGroup(object):
             break
         if not connection:
             raise Exception("No Connection")
-
         transport = connection.get_transport()
         channel = transport.open_channel("session")
-        channel.exec_command(command)
+        # Use sudo if asked, pass in the correct password to the sudo binary
+        if sudo:
+            print("Running as sudo")
+            channel.exec_command("sudo -Sp 'detprompt' " + command)
+            channel.settimeout(1)
+            try:
+                stderr = channel.recv_stderr(3000).decode('utf-8')
+                if stderr == "detprompt":
+                    channel.sendall(self.password + "\n")
+            except:
+                pass
+        else:
+            channel.exec_command(command)
+
+        # If we are given stdin, pass all the data into the process
         if stdin:
             channel.sendall(stdin)
-        channel.shutdown_write()
-        BUFF = 8096
+        # If we are in interactive mode, don't shutdown stdin until later
+        if not interactive:
+            channel.shutdown_write()
+        # Read the output a single byte at a time
+        BUFF = 1
+        # Wait for the process to close or errors to happen
         channel.settimeout(1)
-        try:
-            stdout = channel.recv(BUFF)
-        except socket.timeout:
-            stdout = b''
-        try:
-            stderr = channel.recv_stderr(BUFF)
-        except socket.timeout:
-            stderr = b''
+        # If output if not silenced, create tmp strings for the printed output
+        if not silent:
+            tmp_stdout = b''
+            tmp_stderr = b''
+        stdout = b''
+        stderr = b''
+        # Start reading data until the process dies
+        while not channel.exit_status_ready():
+            # Check if the processes can read data
+            outr = channel.recv_ready()
+            if outr:
+                val = channel.recv(BUFF)
+                stdout += val
+                # If we are live printing, print each new line
+                if not silent and val == b'\n':
+                    printlive(tmp_stdout)
+                    tmp_stdout = b''
+                else:
+                    tmp_stdout += val
+            errr = channel.recv_stderr_ready()
+            if errr:
+                val = channel.recv_stderr(BUFF)
+                stderr += val
+                if not silent and val == b'\n':
+                    printlive(tmp_stderr)
+                    tmp_stderr = b''
+                else:
+                    tmp_stderr += val
+        # Wait for the process to die
+        exitstatus = channel.recv_exit_status()
+        # Process all data that came through after the proc died
+        outr = channel.recv_ready()
+        errr = channel.recv_stderr_ready()
+        # Read until there is no more
+        while outr or errr:
+            if outr:
+                val = channel.recv(BUFF)
+                stdout += val
+                # If we are live printing, print each new line
+                if not silent and val == b'\n':
+                    printlive(tmp_stdout)
+                    tmp_stdout = b''
+                else:
+                    tmp_stdout += val
+            if errr:
+                val = channel.recv_stderr(BUFF)
+                stderr += val
+                if not silent and val == b'\n':
+                    printlive(tmp_stderr)
+                    tmp_stderr = b''
+                else:
+                    tmp_stderr += val
+            outr = channel.recv_ready()
+            errr = channel.recv_stderr_ready()
+        # Get the final output ready to go
         stdout = stdout.decode('utf-8')
         stderr = stderr.decode('utf-8')
-        return self.build_return("", stdout, stderr, 0, "script")
+        return self.build_return("", stdout, stderr, exitstatus, command.strip())
 
     def put(self, local, remote):
         '''
@@ -129,7 +229,6 @@ class ActionGroup(object):
         stderr = proc.stderr.read().decode("utf-8")
         status = proc.wait()
         return self.build_return("localhost", stdout, stderr, status, "local")
-
 
     def display(self, obj):
         '''
