@@ -5,42 +5,49 @@ detcord : Action execution on hosts
 Micah Martin - knif3
 '''
 
+from inspect import getmembers
 import os.path
 import sys
+from detcord.loader import is_valid_action, run_action
 from detcord.exceptions import InvalidDetfile
+import detfile
+
 
 if not os.path.exists("detfile.py"):
     raise InvalidDetfile("Missing detfile in the current directory")
 sys.path.insert(0, os.getcwd())
 
-from inspect import getmembers, isfunction
-import detfile
-import detcord.commands as COMS
-from detcord.actiongroup import ActionGroup
 
-def main(actions):
-    env = detfile.env
+def loop_actions_and_hosts(env, action_functions):
+    """Loop through all the actions in the given function array
+    and all the hosts in the env
+
+    Args:
+        env (dict): A dictionary that is imported from the detfile
+        action_function (list): A list of action functions to run
+
+    Returns:
+        None
+    """
     for host in env['hosts']:
-        for action in actions:
+        for action in action_functions:
+            # Run the action on the host
             env['current_host'] = host
-            Action = ActionGroup(
-                host = host,
-                user = env['user'],
-                password = env['pass']
-            )
-            # Super ghetto code to abstract the action from the user
             func = getattr(detfile, action)
-            COMS.Action = Action
-            func()
-            Action.close()
+            run_action(func, host, env['user'], env['pass'])
 
-if __name__ == '__main__':
+
+def main():
+    """Load a detfile and run the given actions
+    Error if there is no valid detfile, error.
+    If there is a detfile but no valid actions to run, print the
+    available actions
+    """
     # Parse the actions in the detfile
     action_functions = []
     for func in getmembers(detfile):
         # Make sure the function is decorated as an action
-        if getattr(func[1], 'detcord_action', False):
-            #('action',False):
+        if is_valid_action(func[1]):
             action_functions += [func]
 
     # If we have no runnable action, error out
@@ -48,7 +55,7 @@ if __name__ == '__main__':
         raise InvalidDetfile("No runnable actions in detfile.py")
 
     if len(sys.argv) < 2:
-        # Print valid functions that the detfile has
+        # Print valid functions that the detfile has with the docstring
         print("USAGE: {} <action>[..<action>]")
         func_strings = []
         for function in action_functions:
@@ -69,4 +76,7 @@ if __name__ == '__main__':
     if not detfile.env.get("hosts", False):
         raise InvalidDetfile("No hosts specified in the detfile environment")
     # Actually run the actions
-    main(actions)
+    loop_actions_and_hosts(detfile.env, actions)
+
+if __name__ == '__main__':
+    main()
