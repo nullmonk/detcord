@@ -2,6 +2,7 @@
 Actions that you can run against a host
 """
 # pylint: disable=too-many-arguments,fixme
+import socket
 from subprocess import Popen, PIPE
 import shlex
 from . import CONNECTION_MANAGER
@@ -126,17 +127,6 @@ class ActionGroup(object):
                     'command': command
                 }
         """
-        def printlive(value: str) -> None:
-            """Print out the line to the console
-
-            Args:
-                value: The text to write
-
-            Returns:
-                None
-            """
-            print("[{}] live:".format(self.host), str(value.decode('utf-8').strip()))
-
         def send_sudo(channel, command, password):
             """Upgrade the command to sudo using the given password.
 
@@ -148,16 +138,22 @@ class ActionGroup(object):
             Return:
                 bool: Whether or not the sudo worked
             """
-            channel.exec_command("sudo -Sp 'detprompt' " + command)
+            channel.exec_command("sudo -kSp 'detprompt' " + command)
             channel.settimeout(1)
             try:
                 stderr = channel.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
+                    print("sending pass")
                     channel.sendall(password + "\n")
+                else:
+                    return False
                 return True
             # TODO: Find out what to catch here
-            # pylint: disable=bare-except
-            except:
+            except socket.timeout:
+                # Timeout mean no prompt which means root
+                return True
+            except Exception as exception:  # pylint: disable=broad-except
+                print(exception)
                 return False
         # Get the connection from the connection manager
         connection = self.get_connection()
@@ -190,29 +186,29 @@ class ActionGroup(object):
         # Start reading data until the process dies
         while not channel.exit_status_ready():
             # pylint: disable=undefined-variable
-            stdout, stderr = _read_buffers(channel)
+            stdout, stderr = ActionGroup._read_buffers(channel)
             retval['stdout'] += stdout
             retval['stderr'] += stderr
             # Print the lines if we can
             if not silent and stdout:
-                printlive(stdout)
+                print("[{}] [+]:".format(self.host), str(stdout.strip()))
             if not silent and stderr:
-                printlive(stderr)
+                print("[{}] [-]:".format(self.host), str(stderr.strip()))
         # Wait for the process to die
         retval['status'] = channel.recv_exit_status()
         # Process all data that came through after the proc died
         while channel.recv_ready() or channel.recv_stderr_ready():
             # pylint: disable=undefined-variable
-            stdout, stderr = _read_buffers(channel)
+            stdout, stderr = ActionGroup._read_buffers(channel)
             retval['stdout'] += stdout
             retval['stderr'] += stderr
             # Print the lines if we can
             if not silent and stdout:
-                printlive(stdout)
+                print("[{}] [+]:".format(self.host), str(stdout.strip()))
             if not silent and stderr:
-                printlive(stderr)
-        # Close the transport and channels
-        transport.close()
+                print("[{}] [-]:".format(self.host), str(stderr.strip()))
+        # Close the channel
+        channel.close()
         return retval
 
     def put(self, local, remote):
@@ -284,7 +280,7 @@ class ActionGroup(object):
         # Do the same for stderr
         err_ready = channel.recv_stderr_ready()
         while err_ready and char != b'\n':
-            char = channel.recv(1)
+            char = channel.recv_stderr(1)
             stderr += char
             err_ready = channel.recv_stderr_ready()
         return stdout.decode('utf-8'), stderr.decode('utf-8')
