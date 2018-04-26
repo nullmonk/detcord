@@ -1,26 +1,71 @@
-'''
+"""
 Actions that you can run against a host
-'''
+"""
+# pylint: disable=too-many-arguments
 from subprocess import Popen, PIPE
 import shlex
 import socket
-from . import MainManager
-from .exceptions import *
+from . import CONNECTION_MANAGER
+from .exceptions import HostNotFound, NoConnection
+
 
 class ActionGroup(object):
-    '''
+    """
     Create an action group to run against a host
-    '''
+    """
     def __init__(self, host, port=22, user=None, password=None):
         self.host = host
         self.port = port
         self.user = user
         self.password = password
 
+    def get_connection():
+        """Get an SSH connection from the manager, if one doesn't exist,
+        then create a new connection and return that. If a connection can not
+        be made then raise an exception.
+
+        Returns:
+            paramiko.SSHClient: The paramiko connection that we will work with
+
+        Raises:
+            NoConnection: Raised when a connection can not be made after
+            several tries
+        TODO: Convert into paramiko transports instead of SSHConnections
+        """
+        connection = None
+        for i in range(2):
+            try:
+                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
+            except HostNotFound:
+                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
+                continue
+            break
+        if not connection:
+            raise NoConnection("Cannot create a connection for " + self.host)
+        return connection
+
+
     def build_return(self, host="", stdout="", stderr="", status=0, command=""):
-        '''
-        Build a dictionary to be returned as the result
-        '''
+        """Build a dictionary to be returned as the result of a command.
+        This dictionary is meant to be the output of all "command" like functions
+
+        Args:
+            host    (str, optional): The host that the command ran on. Defaults to self.host
+            stdout  (str, optional): The stdout of the command run. Defaults to blank.
+            stderr  (str, optional): The stderr of the command run. Defaults to blank.
+            status  (int, optional): The return status of the command. Defaults to 0
+            command (str, optional): The name of the command that was run. Defaults to blank
+
+        Returns:
+            dict: Returns a dictionary object containing the information.
+                {
+                    'host': host,
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'status': status,
+                    'command': command
+                }
+        """
         if host == "":
             host = self.host
         ret = {
@@ -33,16 +78,24 @@ class ActionGroup(object):
         return ret
 
     def run(self, command):
-        connection = None
-        for i in range(3):
-            try:
-                connection = MainManager.getSSHConnection(self.host)
-            except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
+        """Run a program on the remote host.
+
+        Args:
+            command     (str):  The command to run on the remote host
+
+        Returns:
+            dict: Returns a dictionary object containing information about the command
+            including the host, stdout, stderr, status code, and the command run on the
+            remote host.
+                {
+                    'host': host,
+                    'stdout': stdout,
+                    'stderr': stderr,
+                    'status': status,
+                    'command': command
+                }
+        """
+        connection = self.get_connection()
         stdin, stdout, stderr = connection.exec_command(command)
         stdout = stdout.read().decode('utf-8')
         stderr = stderr.read().decode('utf-8')
@@ -84,30 +137,35 @@ class ActionGroup(object):
                 None
             """
             print("[{}] live:".format(self.host), str(value.decode('utf-8').strip()))
-        # Get the connection from the connection manager
-        connection = None
-        for i in range(2):
-            try:
-                connection = MainManager.getSSHConnection(self.host)
-            except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
-                continue
-            break
-        if not connection:
-            raise Exception("No Connection")
-        transport = connection.get_transport()
-        channel = transport.open_channel("session")
-        # Use sudo if asked, pass in the correct password to the sudo binary
-        if sudo:
-            print("Running as sudo")
+
+        def send_sudo(channel, command, password):
+            """Upgrade the command to sudo using the given password.
+
+            Args:
+                channel (paramiko.channel): The channel to send the connection over
+                command (str): The command to run on the remote host
+                password (str): The password to use for sudo
+
+            Return:
+                bool: Whether or not the sudo worked
+            """
             channel.exec_command("sudo -Sp 'detprompt' " + command)
             channel.settimeout(1)
             try:
                 stderr = channel.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
-                    channel.sendall(self.password + "\n")
+                    channel.sendall(password + "\n")
+                return True
             except:
-                pass
+                return False
+        # Get the connection from the connection manager
+        connection = get_connection()
+        transport = connection.get_transport()
+        channel = transport.open_channel("session")
+        # Use sudo if asked, pass in the correct password to the sudo binary
+        if sudo:
+            if not send_sudo(channel, command, self.password):
+                print("[!] Cannot run as sudo")
         else:
             channel.exec_command(command)
 
@@ -130,7 +188,6 @@ class ActionGroup(object):
         # Start reading data until the process dies
         while not channel.exit_status_ready():
             # Check if the processes can read data
-            outr = channel.recv_ready()
             if outr:
                 val = channel.recv(BUFF)
                 stdout += val
@@ -140,7 +197,6 @@ class ActionGroup(object):
                     tmp_stdout = b''
                 else:
                     tmp_stdout += val
-            errr = channel.recv_stderr_ready()
             if errr:
                 val = channel.recv_stderr(BUFF)
                 stderr += val
@@ -149,6 +205,8 @@ class ActionGroup(object):
                     tmp_stderr = b''
                 else:
                     tmp_stderr += val
+            outr = channel.recv_ready()
+            errr = channel.recv_stderr_ready()
         # Wait for the process to die
         exitstatus = channel.recv_exit_status()
         # Process all data that came through after the proc died
@@ -178,18 +236,20 @@ class ActionGroup(object):
         # Get the final output ready to go
         stdout = stdout.decode('utf-8')
         stderr = stderr.decode('utf-8')
+        # Close the transport and channels
+        transport.close()
         return self.build_return("", stdout, stderr, exitstatus, command.strip())
 
     def put(self, local, remote):
-        '''
+        """
         Put a local file onto the remote host
-        '''
+        """
         connection = None
         for i in range(2):
             try:
-                connection = MainManager.getSSHConnection(self.host)
+                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
             except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
+                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
                 continue
             break
         if not connection:
@@ -199,15 +259,15 @@ class ActionGroup(object):
         return self.build_return("", "", "", 0, "put")
 
     def get(self, remote, local):
-        '''
+        """
         Get a remote file and save it locally
-        '''
+        """
         connection = None
         for i in range(2):
             try:
-                connection = MainManager.getSSHConnection(self.host)
+                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
             except HostNotFound:
-                MainManager.addHost(self.host, self.port, self.user, self.password)
+                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
                 continue
             break
         if not connection:
@@ -218,9 +278,9 @@ class ActionGroup(object):
 
 
     def local(self, command, stdin=None):
-        '''
+        """
         Execute a command. Shove stdin into it if requested
-        '''
+        """
         proc = Popen(shlex.split(command), shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      close_fds=True)
         if stdin:
@@ -231,16 +291,16 @@ class ActionGroup(object):
         return self.build_return("localhost", stdout, stderr, status, "local")
 
     def display(self, obj):
-        '''
+        """
         Pretty print the output of an action
-        '''
+        """
         host = obj.get('host', "")
         for line in obj['stdout'].strip().split('\n'):
             if line:
-                print("[{}]".format(host),line)
+                print("[{}]".format(host), line)
         for line in obj['stderr'].strip().split('\n'):
             if line:
-                print("[{}] ERROR".format(host),line)
+                print("[{}] ERROR".format(host), line)
 
 
     def close(self):
