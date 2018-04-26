@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name,missing-docstring
 Action = None
 def run(*args, **kwargs):
     return Action.run(*args, **kwargs)

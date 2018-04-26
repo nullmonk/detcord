@@ -35,9 +35,9 @@ class ActionGroup(object):
         connection = None
         for _ in range(2):
             try:
-                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
+                connection = CONNECTION_MANAGER.get_ssh_connection(self.host)
             except HostNotFound:
-                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
+                CONNECTION_MANAGER.add_host(self.host, self.port, self.user, self.password)
                 continue
             break
         if not connection:
