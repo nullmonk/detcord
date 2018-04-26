@@ -1,5 +1,21 @@
 import datetime
+import re
 from urllib.request import urlretrieve as wget
+
+
+def stripColors(string: str) -> str:
+    """Remove all the ANSI escape sequences from the given string.
+    This will strip all color from output.
+
+    Args:
+        string: The string to remove the data from
+
+    Returns:
+        str: The new string without all the ANSI escapes
+    """
+    ansicodes = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+    return ansicodes.sub('', string)
+
 
 def saveResults(path, result):
     '''Write the output of a command to the given path
