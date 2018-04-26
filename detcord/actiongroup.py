@@ -64,14 +64,13 @@ class ActionGroup(object):
         channel = transport.open_channel("session")
         # Send data into sudo if required
         if sudo:
-            print("Running as sudo"
-            chan.exec_command("sudo -Sp 'detprompt' " + command)
-            chan.settimeout(1)
+            print("Running as sudo")
+            channel.exec_command("sudo -Sp 'detprompt' " + command)
+            channel.settimeout(1)
             try:
-                stderr = chan.recv_stderr(3000).decode('utf-8')
+                stderr = channel.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
-                    print("Writing password")
-                    chan.sendall(self.password + "\n")
+                    channel.sendall(self.password + "\n")
             except:
                 pass
         else:
@@ -80,18 +79,25 @@ class ActionGroup(object):
             channel.sendall(stdin)
         channel.shutdown_write()
         BUFF = 8096
+        # Wait for the process to close or errors to happen
+        exitstatus = channel.recv_exit_status()
         channel.settimeout(1)
-        try:
-            stdout = channel.recv(BUFF)
-        except socket.timeout:
-            stdout = b''
-        try:
-            stderr = channel.recv_stderr(BUFF)
-        except socket.timeout:
-            stderr = b''
+        stdout = b''
+        stderr = b''
+        # Start reading data until we dont have anything to read
+        outr = channel.recv_ready()
+        errr = channel.recv_stderr_ready()
+        while outr or errr:
+            if outr:
+                stdout += channel.recv(BUFF)
+            if errr:
+                stderr += channel.recv_stderr(BUFF)
+            outr = channel.recv_ready()
+            errr = channel.recv_stderr_ready()
+        # Get the return value ready to go
         stdout = stdout.decode('utf-8')
         stderr = stderr.decode('utf-8')
-        return self.build_return("", stdout, stderr, 0, "script")
+        return self.build_return("", stdout, stderr, exitstatus, "script")
 
     def put(self, local, remote):
         '''
