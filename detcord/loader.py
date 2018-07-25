@@ -5,7 +5,6 @@ Can be called by a server
 
 Used by the detonate program as well
 """
-from . import commands as COMS
 from .actiongroup import ActionGroup
 
 
@@ -43,10 +42,8 @@ def run_action(action, host, username, password):
     if not is_valid_action(action):
         # not a valid action
         return False
-    # Inject the action object into the commands library
-    COMS.Action = action_group
     # Call the action
-    action()
+    action(action_group)
     # Close the new action object
     action_group.close()
     return True

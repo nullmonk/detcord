@@ -4,36 +4,35 @@ detcord : Action execution on hosts
 Micah Martin - knif3
 '''
 
-from detcord.commands import action, run, local, put, get, display
-
+from detcord import action, display
 
 env = {}  # pylint: disable=invalid-name
-env['pass'] = 'root'
-env['user'] = 'toor'
+env['user'] = 'root'
+env['pass'] = 'toor'
 env['hosts'] = ['192.168.177.161']
 
 @action
-def test():
+def test(host):
     '''
     A test action for the detcord project
 
     Showcases the commands that can be run
     '''
     # You can run simple commands
-    ret = run("echo welcome to detcord")
+    ret = host.run("echo welcome to detcord")
     # You can pass a script to be piped into the process
-    ret = run("bash", "echo this is valid\nThis is an error\n")
+    ret = host.run("bash", "echo this is valid\nThis is an error\n")
     # You can run a command as root
-    ret = run("whoami", sudo=True)
+    ret = host.run("whoami", sudo=True)
     # Display can handle the direct output of a command
     display(ret)
     # Run commands locally
-    ret = local("whoami")
+    ret = host.local("whoami")
     # Display can handle stdout and stderr
     display(ret)
     # Put and push files to/from the server
-    put("../README.md", "/tmp/README")
-    get("/tmp/README", "test.swp")
+    host.put("README.md", "/tmp/README")
+    host.get("/tmp/README", "test.swp")
 
 
 def support_action():

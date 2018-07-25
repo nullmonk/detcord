@@ -218,19 +218,6 @@ class ActionGroup(object):
         return self.build_return("localhost", stdout, stderr, status, "local")
 
     @staticmethod
-    def display(obj):
-        """
-        Pretty print the output of an action
-        """
-        host = obj.get('host', "")
-        for line in obj['stdout'].strip().split('\n'):
-            if line:
-                print("[{}]".format(host), line)
-        for line in obj['stderr'].strip().split('\n'):
-            if line:
-                print("[{}] ERROR".format(host), line)
-
-    @staticmethod
     def _read_buffers(channel):
         """
         Read a line of stdout and stderr from the channel.
