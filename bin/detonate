@@ -10,12 +10,12 @@ import os.path
 import sys
 from detcord.loader import is_valid_action, run_action
 from detcord.exceptions import InvalidDetfile
-import detfile
 
 
 if not os.path.exists("detfile.py"):
     raise InvalidDetfile("Missing detfile in the current directory")
 sys.path.insert(0, os.getcwd())
+import detfile
 
 
 def loop_actions_and_hosts(env, action_functions):
@@ -56,7 +56,7 @@ def main():
 
     if len(sys.argv) < 2:
         # Print valid functions that the detfile has with the docstring
-        print("USAGE: {} <action>[..<action>]")
+        print("USAGE: {} <action>[..<action>]".format(sys.argv[0]))
         func_strings = []
         for function in action_functions:
             docstring = function[1].__doc__
