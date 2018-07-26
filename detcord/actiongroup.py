@@ -3,6 +3,7 @@ Actions that you can run against a host
 """
 # pylint: disable=too-many-arguments,fixme
 import socket
+import logging
 from subprocess import Popen, PIPE
 import shlex
 from . import CONNECTION_MANAGER
@@ -18,6 +19,8 @@ class ActionGroup(object):
         self.port = port
         self.user = user
         self.password = password
+        self.connection = None
+        self.logger = logging.getLogger("detcord")
 
     def get_connection(self):
         """Get an SSH connection from the manager, if one doesn't exist,
@@ -77,7 +80,8 @@ class ActionGroup(object):
         }
         return ret
 
-    def run(self, command: str, stdin=None, sudo=False, silent=False, interactive=False) -> dict:
+    def run(self, command: str, stdin=None, sudo=False, silent=False, interactive=False,
+            connection=None) -> dict:
         """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
         interactive with commands that read from stdin constantly (e.x. 'bash').
@@ -91,6 +95,7 @@ class ActionGroup(object):
                                           Defaults to False.
             interactive (bool, optional): Whether or not the program requires further interaction.
                                           Defaults to False.
+            connection  (paramiko.SSHClient, optional): The connection to use for the interaction
         Returns:
             dict: Returns a dictionary object containing information about the command
             including the host, stdout, stderr, status code, and the command run on the
@@ -124,13 +129,16 @@ class ActionGroup(object):
                 return True
             # TODO: Find out what to catch here
             except socket.timeout:
-                # Timeout mean no prompt which means root
+                # Timeout means no prompt which means root
                 return True
             except Exception as exception:  # pylint: disable=broad-except
                 print(exception)
                 return False
         # Get the connection from the connection manager
-        connection = self.get_connection()
+        if self.connection is None:
+            connection = self.get_connection()
+        else:
+            connection = self.connection
         transport = connection.get_transport()
         channel = transport.open_channel("session")
         # Keep track of all our buffers

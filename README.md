@@ -10,7 +10,7 @@ auto-registering of hosts, autopwn capabilities, and perhaps credential brutefor
 
 Influenced heavily from [fabric](https://github.com/fabric/fabric). I initially used the fabric framework
 for my deployment but quickly wanted to make it a little more lightweight and specific to what I
-wanted to do. In addition, fabric did not support Python 3+ and did not allow for certain type of
+wanted to do. In addition, fabric did not support Python 3+ and did not allow for certain types of
 actions to be run against a host.
 
 > Lots of improvements will be made to this tool over time. I will try to keep the `master` branch
@@ -21,7 +21,7 @@ Usage is fairly simple for running basic functions against a host. Create a `det
 the actions that you will need for your deployment. In addition to each action, you will need to
 import the `action` decorator
 ```python
-from detcord.commands import action, run, display
+from detcord import display, action
 ```
 
 Set up a simple environment for the detfile. Currently the environment supports the following values
@@ -31,6 +31,7 @@ Set up a simple environment for the detfile. Currently the environment supports 
 | hosts        | Yes      | An array of hosts to run the actions against.     |
 | user         | Yes      | The username to use on each host                  |
 | pass         | Yes      | The password to use on each host                  |
+| threading    | No       | Whether or not to thread the actions. Each host gets one thread. |
 | current_host | No       | The current host that the action is being run on. |
 
 ```python
@@ -43,11 +44,11 @@ env['pass'] = 'toor'
 You may now write a simple function to run against a host.
 ```python
 @action
-def HelloWorld():
+def HelloWorld(host):
     '''
     This is a Hello World action
     '''
-    ret = run("whoami")
+    ret = host.run("whoami")
     display(ret)
 ```
 
