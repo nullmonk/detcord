@@ -30,7 +30,6 @@ def run_action(action, host, username, password):
         host (str): The host to run the action on
         username (str): The username to login with
         password (str): The password to login with
-
     Returns
         bool: Whether or not the action ran
     """

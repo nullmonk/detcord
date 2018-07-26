@@ -29,11 +29,14 @@ class Manager(object):
             user = self.default_user
         if not password:
             password = self.default_pass
-        self.manager[host.lower()] = {
+        host = host.lower()
+        if host not in self.manager:
+            self.manager[host] = {}
+        self.manager[host.lower()].update({
             'port': port,
             'user': user,
             'pass': password
-        }
+        })
 
     def get_ssh_connection(self, host):
         '''Get the connection for that host or create a
