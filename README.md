@@ -66,7 +66,6 @@ Currently the following commands can be imported and run from a detfile
 | Function | Args                  | Description                                               |
 |----------|-----------------------|-----------------------------------------------------------|
 | run      | command               | Run `command` against the remote host                     |
-| script   | command, stdin        | Run `command` against the remote host and pass in `stdin` |
 | local    | command               | Run `command` on the local machine                        |
 | put      | localfile, remotefile | Save `localfile` on the remote host to `remotefile`       |
 | get      | remotefile, localfile | Save `remotefile` from the remote host into `localfile`   |

@@ -35,9 +35,9 @@ class ActionGroup(object):
         connection = None
         for _ in range(2):
             try:
-                connection = CONNECTION_MANAGER.getSSHConnection(self.host)
+                connection = CONNECTION_MANAGER.get_ssh_connection(self.host)
             except HostNotFound:
-                CONNECTION_MANAGER.addHost(self.host, self.port, self.user, self.password)
+                CONNECTION_MANAGER.add_host(self.host, self.port, self.user, self.password)
                 continue
             break
         if not connection:
@@ -77,32 +77,8 @@ class ActionGroup(object):
         }
         return ret
 
-    def run(self, command):
-        """Run a program on the remote host.
-
-        Args:
-            command     (str):  The command to run on the remote host
-
-        Returns:
-            dict: Returns a dictionary object containing information about the command
-            including the host, stdout, stderr, status code, and the command run on the
-            remote host.
-                {
-                    'host': host,
-                    'stdout': stdout,
-                    'stderr': stderr,
-                    'status': status,
-                    'command': command
-                }
-        """
-        connection = self.get_connection()
-        _, stdout, stderr = connection.exec_command(command)
-        stdout = stdout.read().decode('utf-8')
-        stderr = stderr.read().decode('utf-8')
-        return self.build_return("", stdout, stderr, 0, "run")
-
-    def script(self, command: str, stdin=None, sudo=False, silent=False, interactive=False) -> dict:
-        """Run a program on the remote host. stdin can be passed into the program for script
+    def run(self, command: str, stdin=None, sudo=False, silent=False, interactive=False) -> dict:
+        """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
         interactive with commands that read from stdin constantly (e.x. 'bash').
 
@@ -240,19 +216,6 @@ class ActionGroup(object):
         stderr = proc.stderr.read().decode("utf-8")
         status = proc.wait()
         return self.build_return("localhost", stdout, stderr, status, "local")
-
-    @staticmethod
-    def display(obj):
-        """
-        Pretty print the output of an action
-        """
-        host = obj.get('host', "")
-        for line in obj['stdout'].strip().split('\n'):
-            if line:
-                print("[{}]".format(host), line)
-        for line in obj['stderr'].strip().split('\n'):
-            if line:
-                print("[{}] ERROR".format(host), line)
 
     @staticmethod
     def _read_buffers(channel):
