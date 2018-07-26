@@ -61,7 +61,7 @@ class Manager(object):
         user = self.manager[host]['user']
         passwd = self.manager[host]['pass']
         con = paramiko.SSHClient()
-        con.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        con.set_missing_host_key_policy(paramiko.WarningPolicy())
         con.load_system_host_keys()
         con.connect(timeout=self.timeout, hostname=host, port=port, username=user, password=passwd)
         return con
