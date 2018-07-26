@@ -64,7 +64,12 @@ class Manager(object):
         user = self.manager[host]['user']
         passwd = self.manager[host]['pass']
         con = paramiko.SSHClient()
-        con.set_missing_host_key_policy(paramiko.WarningPolicy())
+        con.set_missing_host_key_policy(SilentTreatmentPolicy())
         con.load_system_host_keys()
         con.connect(timeout=self.timeout, hostname=host, port=port, username=user, password=passwd)
         return con
+
+class SilentTreatmentPolicy(paramiko.MissingHostKeyPolicy):
+    """Do nothing when we face keys"""
+    def missing_host_key(self, *args):
+        pass

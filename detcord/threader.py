@@ -5,6 +5,8 @@ import threading
 from queue import Queue
 from .actiongroup import ActionGroup
 
+THREAD_TIMEOUT = 2
+
 class Threader(object):
     def __init__(self, connection_manager):
         self.threads = []
@@ -31,17 +33,17 @@ class Threader(object):
             # Get an ssh connection for the thread to use
             connection = self.conman.get_ssh_connection(host)
             thread = threading.Thread(
-                                      target=executor,
-                                      args=(connection, self.queues[host])
-                                     )
+                target=action_runner,
+                args=(connection, self.queues[host])
+            )
             self.threads.append(thread)
             thread.start()
         self.queues[host].put((action, actiongroup))
 
-def executor(connection, queue):
+def action_runner(connection, queue):
     while True:
         try:
-            action, actiongroup = queue.get(timeout=5)
+            action, actiongroup = queue.get(timeout=THREAD_TIMEOUT)
         except:
             queue.task_done()
             return False
