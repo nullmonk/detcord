@@ -29,11 +29,14 @@ class Manager(object):
             user = self.default_user
         if not password:
             password = self.default_pass
-        self.manager[host.lower()] = {
+        host = host.lower()
+        if host not in self.manager:
+            self.manager[host] = {}
+        self.manager[host.lower()].update({
             'port': port,
             'user': user,
             'pass': password
-        }
+        })
 
     def get_ssh_connection(self, host):
         '''Get the connection for that host or create a
@@ -61,7 +64,18 @@ class Manager(object):
         user = self.manager[host]['user']
         passwd = self.manager[host]['pass']
         con = paramiko.SSHClient()
-        con.set_missing_host_key_policy(paramiko.WarningPolicy())
+        con.set_missing_host_key_policy(SilentTreatmentPolicy())
         con.load_system_host_keys()
         con.connect(timeout=self.timeout, hostname=host, port=port, username=user, password=passwd)
         return con
+
+    def close(self):
+        for host in self.manager:
+            con = host.get("ssh", False)
+            if con:
+                con.close()
+
+class SilentTreatmentPolicy(paramiko.MissingHostKeyPolicy):
+    """Do nothing when we face keys"""
+    def missing_host_key(self, *args):
+        pass

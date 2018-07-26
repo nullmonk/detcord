@@ -10,13 +10,13 @@ import os.path
 import sys
 from detcord.loader import is_valid_action, run_action
 from detcord.exceptions import InvalidDetfile
-
+from detcord.threader import Threader
 
 if not os.path.exists("detfile.py"):
     raise InvalidDetfile("Missing detfile in the current directory")
 sys.path.insert(0, os.getcwd())
 import detfile
-
+from detcord import CONNECTION_MANAGER
 
 def loop_actions_and_hosts(env, action_functions):
     """Loop through all the actions in the given function array
@@ -29,12 +29,19 @@ def loop_actions_and_hosts(env, action_functions):
     Returns:
         None
     """
+    if env.get("threading", False):
+        threader = Threader(CONNECTION_MANAGER)
+    else:
+        threader = False
     for host in env['hosts']:
         for action in action_functions:
             # Run the action on the host
             env['current_host'] = host
             func = getattr(detfile, action)
-            run_action(func, host, env['user'], env['pass'])
+            if threader:
+                threader.run_action(func, host, env['user'], env['pass'])
+            else:
+                run_action(func, host, env['user'], env['pass'])
 
 
 def main():
@@ -73,10 +80,14 @@ def main():
         if action not in [f[0] for f in action_functions]:
             raise InvalidDetfile("Not a valid action in the detfile: {}".format(action))
     # Make sure we have set hosts for the detfile
-    if not detfile.env.get("hosts", False):
+    try:
+        env = detfile.env
+    except AttributeError:
+        raise InvalidDetfile("Detfile does not contain an 'env' dictionary")
+    if not env.get("hosts", False):
         raise InvalidDetfile("No hosts specified in the detfile environment")
     # Actually run the actions
-    loop_actions_and_hosts(detfile.env, actions)
+    loop_actions_and_hosts(env, actions)
 
 if __name__ == '__main__':
     main()
