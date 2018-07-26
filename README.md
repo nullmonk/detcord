@@ -31,6 +31,7 @@ Set up a simple environment for the detfile. Currently the environment supports 
 | hosts        | Yes      | An array of hosts to run the actions against.     |
 | user         | Yes      | The username to use on each host                  |
 | pass         | Yes      | The password to use on each host                  |
+| threading    | No       | Whether or not to thread the actions. Each host gets one thread. |
 | current_host | No       | The current host that the action is being run on. |
 
 ```python
@@ -43,11 +44,11 @@ env['pass'] = 'toor'
 You may now write a simple function to run against a host.
 ```python
 @action
-def HelloWorld():
+def HelloWorld(host):
     '''
     This is a Hello World action
     '''
-    ret = run("whoami")
+    ret = host.run("whoami")
     display(ret)
 ```
 
