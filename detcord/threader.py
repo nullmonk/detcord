@@ -5,7 +5,7 @@ import threading
 from queue import Queue
 from .actiongroup import ActionGroup
 
-THREAD_TIMEOUT = 2
+THREAD_TIMEOUT = 1
 
 class Threader(object):
     def __init__(self, connection_manager):
@@ -39,6 +39,9 @@ class Threader(object):
             self.threads.append(thread)
             thread.start()
         self.queues[host].put((action, actiongroup))
+
+    def close(self):
+        self.conman.close()
 
 def action_runner(connection, queue):
     while True:
