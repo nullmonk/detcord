@@ -212,16 +212,20 @@ class ActionGroup(object):
         return self.build_return("", "", "", 0, "get")
 
 
-    def local(self, command, stdin=None):
+    def local(self, command, stdin=None, sudo=False):
         """
         Execute a command. Shove stdin into it if requested
         """
-        proc = Popen(shlex.split(command), shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
+        proc = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      close_fds=True)
         if stdin:
-            proc.stdin.write(stdin)
-        stdout = proc.stdout.read().decode("utf-8")
-        stderr = proc.stderr.read().decode("utf-8")
+            stdout, stderr = proc.communicate(stdin)
+        else:
+            stdout, stderr = proc.communicate()
+        if sudo:
+            logging.warn("sudo on local command not implemented")
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8")
         status = proc.wait()
         return self.build_return("localhost", stdout, stderr, status, "local")
 

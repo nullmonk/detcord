@@ -25,12 +25,15 @@ def test(host):
     ret = host.run("bash", "echo this is valid\nThis is an error\n")
     # You can run a command as root
     ret = host.run("whoami", sudo=True)
-    # Display can handle the direct output of a command
+    # Display will print the results nicely
     display(ret)
     # Run commands locally
     ret = host.local("whoami")
-    # Display can handle stdout and stderr
-    display(ret)
+    # Display can handle output to a file object, or any kwarg that print
+    # can handle
+    with open("/tmp/detcord_log.txt", "a") as outfile:
+        display(ret, file=outfile)
+
     # Put and push files to/from the server
     host.put("README.md", "/tmp/README")
     host.get("/tmp/README", "test.swp")
