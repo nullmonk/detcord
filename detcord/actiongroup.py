@@ -5,7 +5,6 @@ Actions that you can run against a host
 import socket
 import logging
 from subprocess import Popen, PIPE
-import shlex
 from . import CONNECTION_MANAGER
 from .exceptions import HostNotFound, NoConnection
 
@@ -14,7 +13,7 @@ class ActionGroup(object):
     """
     Create an action group to run against a host
     """
-    def __init__(self, host, port=22, user=None, password=None):
+    def __init__(self, host, port=22, user=None, password=None, env={}):
         self.host = host
         self.port = port
         self.user = user

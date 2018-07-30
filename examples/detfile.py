@@ -9,7 +9,7 @@ from detcord import action, display
 env = {}  # pylint: disable=invalid-name
 env['user'] = 'root'
 env['pass'] = 'toor'
-env['hosts'] = ['192.168.177.161']
+env['hosts'] = ['localhost']
 env['threading'] = False  # threading defaults to false
 
 @action

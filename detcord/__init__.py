@@ -2,6 +2,7 @@
 The primary module for detcord
 """
 from .manager import Manager
+from .exceptions import *
 
 # Create a host and connection manager
 CONNECTION_MANAGER = Manager()
@@ -20,8 +21,8 @@ def display(obj, **kwargs):
     host = obj.get('host', "")
     for line in obj['stdout'].strip().split('\n'):
         if line:
-            print("[{}]".format(host), line, **kwargs)
+            print("[{}] [+]:".format(host), line, **kwargs)
     for line in obj['stderr'].strip().split('\n'):
         if line:
-            print("[{}] ERROR".format(host), line, **kwargs)
+            print("[{}] [-]:".format(host), line, **kwargs)
 
