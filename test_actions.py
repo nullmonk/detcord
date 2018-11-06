@@ -18,12 +18,7 @@ def test(host):
     Showcases the commands that can be run
     '''
     # You can run simple commands
-    ret = host.run("echo welcome to detcord")
+    ret = host.run("head -n 1 /tmp/README")
     # You can pass a script to be piped into the process
-    ret = host.run("bash", "echo this is valid\nThis is an error\n")
-    # You can run a command as root
-    ret = host.run("whoami", sudo=True)
     # Display will print the results nicely
     display(ret)
-    # Run commands locally
-    ret = host.local("whoami")

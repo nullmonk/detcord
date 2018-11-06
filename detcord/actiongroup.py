@@ -79,7 +79,7 @@ class ActionGroup(object):
         }
         return ret
 
-    def run(self, command: str, stdin=None, sudo=False, silent=False, interactive=False,
+    def run(self, command: str, stdin=None, sudo=False, silent=True, interactive=False,
             connection=None) -> dict:
         """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
