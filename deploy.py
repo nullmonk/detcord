@@ -64,7 +64,6 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
             env = {}
             func = getattr(detfile, action)
             if threader:
-                print("running on", host['ip'])
                 threader.run_action(func, host['ip'],
                                     host['user'], host['password'])
             else:

@@ -123,7 +123,7 @@ class ActionGroup(object):
             try:
                 stderr = channel.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
-                    print("sending pass")
+                    #print("sending pass")
                     channel.sendall(password + "\n")
                 return True
             # TODO: Find out what to catch here
