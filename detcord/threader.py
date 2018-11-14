@@ -59,7 +59,7 @@ class Threader(object):
             self.threads.append(thread)
             thread.start()
         self.queues[host].put((action, actiongroup))
-        print("[{}] [+]: Connected to host".format(host))
+        #print("[{}] [+]: Connected to host".format(host))
         return True
 
     def close(self):
