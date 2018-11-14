@@ -17,12 +17,15 @@ class Threader(object):
             "open": False
         }
 
-    def run_action(self, action, host, username, password):
+    def run_action(self, action, host):
+        """Given an action function and a host dict, run the action on the host
+        """
         actiongroup = ActionGroup(
-            host=host,
-            user=username,
-            password=password
+            host=host['ip'],
+            user=host['user'],
+            password=host['password']
         )
+        host = host['ip']
         host = host.lower()
         if not self.listener.get("open"):
             self.listener['open'] = True

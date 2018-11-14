@@ -60,33 +60,46 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
         threader = False
     for host in hosts.ips.values():
         for action in action_functions:
-            # Run the action on the host
-            env = {}
-            func = getattr(detfile, action)
+            func = getattr(detfile, action)  # Get the actual function based on the name
             if threader:
-                threader.run_action(func, host['ip'],
-                                    host['user'], host['password'])
+                # Run threaded
+                threader.run_action(func, host)
             else:
-                run_action(func, host, env['user'], env['pass'])
+                # Run serialized
+                run_action(func, host)
 
-def update_hosts(hosts, topology):
-    """List all the valid hosts in the topology file
+
+def update_hosts(hosts, env):
+    """Generate hosts for all the hosts in the given environment
     """
-    for network in topology.get("networks", []):
-        for team in topology.get('teams', []):
-            for host in network.get("hosts", []):
-                data = {}
-                ip = network.get('ip').replace('x', str(team))
-                ip += "." + host.get('ip')
-                alias = host.get("name", False)
-                data['ip'] = ip
-                data['port'] = host.get('port', env.get('port', 22))
-                data['user'] = host.get('user', env.get('user', 'root'))
-                data['password'] = host.get('password',
-                                            env.get('password', 'changeme'))
-                hosts.add_host(ip, data)
-                if alias:
-                    hosts.add_alias(alias, ip)
+    # Loop through all the hosts and build the data for it
+    for host in env.get("hosts", []):
+        if isinstance(host, dict):
+            # If we are given a dictionary as teh host information, load all the info from that
+            data = host
+            host.get('ip')  # Make sure there is an IP in this host information
+        else:
+            # Assume its a string and create the new data file
+            data = {
+                'ip': host
+            }
+        
+        # Add all the missing values to the data
+        if 'port' not in data:
+            data['port'] = env.get('port', 22)
+        if 'user' not in data:
+            data['user'] = env.get('user')
+        # if "pass" is in the host definition, rename it to 'password'
+        if 'pass' in data:
+            data['password'] = data['pass']
+            del data['pass']
+        if 'password' not in data:
+            data['password'] = env.get('pass', env.get('password'))
+        
+        hosts.add_host(data['ip'], data)
+        # Add the alias if its given
+        if 'name' in data:
+            hosts.add_alias(data['name'], data['ip'])
 
             
 
@@ -108,7 +121,7 @@ def get_functions(module):
 
 def usage():
     # Print valid functions that the detfile has with the docstring
-    print("USAGE: {} <topology> <detfile> <action>[..<action>]".format(sys.argv[0]))
+    print("USAGE: {} <detfile> <action>[..<action>]".format(sys.argv[0]))
 
 def valid_actions(actions):
     func_strings = []
@@ -128,55 +141,42 @@ def main():
     If there is a detfile but no valid actions to run, print the
     available actions
     """
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         usage()
         quit()
     # Check if the playbook exists
-    try:
-        with open(sys.argv[1]) as fil:
-            topo = json.load(fil)
-    except (FileNotFoundError, DecodeError, Exception) as E:
-        #print(E, type(E))
-        print("Please give a valid topplogy")
-        usage()
-        quit()
-    if not os.path.exists(sys.argv[2]):
+    if not os.path.exists(sys.argv[1]):
         print("Please give a valid detfile")
         usage()
         quit()
     # Import the detfile that we are trying to load
-    path = os.path.dirname(os.path.abspath(sys.argv[2]))
-    name = os.path.splitext(os.path.basename(sys.argv[2]))[0]
+    path = os.path.dirname(os.path.abspath(sys.argv[1]))
+    name = os.path.splitext(os.path.basename(sys.argv[1]))[0]
     sys.path.insert(0, path)
     global detfile
     detfile = __import__(name)
     action_functions = get_functions(detfile)
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 3:
         "Please give atleast one valid action"
         usage()
         valid_actions(action_functions)
     # Make sure we are calling a valid action
-    actions = sys.argv[3:]
+    actions = sys.argv[2:]
     for action in actions:
         if action not in [f[0] for f in action_functions]:
             raise InvalidDetfile("Not a valid action in the detfile: {}".format(action))
     # get/set the environment for the detfile
     global env
-    try:
-        env = detfile.env
-    except AttributeError:
-        env = {
-            'user': 'root',
-            'password': 'changme',
-            'port': 22
-        }
-        detfile.env = env
+    env = detfile.env
+
     global hosts
     hosts = Hosts()
-    update_hosts(hosts, topo)
-    # Make sure we have set hosts for the detfile
+
+    # Create a mapping of all the hosts
+    update_hosts(hosts, env)
+
     # Actually run the actions
-    loop_actions_and_hosts(hosts, actions)
+    loop_actions_and_hosts(hosts, actions, env.get("threading", True))
 
 
 

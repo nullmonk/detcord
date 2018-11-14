@@ -21,22 +21,20 @@ def is_valid_action(action):
     return getattr(action, 'detcord_action', False) != False
 
 
-def run_action(action, host, username, password):
+def run_action(action, host):
     """Run the given action on the host with the username and password
     If the action is not valid, return False
 
     Args:
         action (function): the action function to run on the host
-        host (str): The host to run the action on
-        username (str): The username to login with
-        password (str): The password to login with
+        host (dict): The host to run the action on
     Returns
         bool: Whether or not the action ran
     """
     action_group = ActionGroup(
-        host=host,
-        user=username,
-        password=password
+        host=host['ip'],
+        user=host['user'],
+        password=host['password']
     )
     if not is_valid_action(action):
         # not a valid action
