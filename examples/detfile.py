@@ -38,6 +38,11 @@ def test(host):
     host.put("README.md", "/tmp/README")
     host.get("/tmp/README", "test.swp")
 
+    # Get information about the commands run
+    ret = host.run("not_a_real_command")
+    if ret.get('status', 1) != 0:
+        print("Command failed to run!")
+
 
 def support_action():
     '''
