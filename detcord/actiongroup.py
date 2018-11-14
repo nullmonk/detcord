@@ -5,7 +5,6 @@ Actions that you can run against a host
 import socket
 import logging
 from subprocess import Popen, PIPE
-import shlex
 from . import CONNECTION_MANAGER
 from .exceptions import HostNotFound, NoConnection
 
@@ -14,7 +13,7 @@ class ActionGroup(object):
     """
     Create an action group to run against a host
     """
-    def __init__(self, host, port=22, user=None, password=None):
+    def __init__(self, host, port=22, user=None, password=None, env={}):
         self.host = host
         self.port = port
         self.user = user
@@ -80,8 +79,8 @@ class ActionGroup(object):
         }
         return ret
 
-    def run(self, command: str, stdin=None, sudo=False, silent=False, interactive=False,
-            connection=None) -> dict:
+    def run(self, command: str, stdin=None, sudo=False, silent=True, interactive=False,
+            connection=None, shell=False) -> dict:
         """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
         interactive with commands that read from stdin constantly (e.x. 'bash').
@@ -96,6 +95,8 @@ class ActionGroup(object):
             interactive (bool, optional): Whether or not the program requires further interaction.
                                           Defaults to False.
             connection  (paramiko.SSHClient, optional): The connection to use for the interaction
+            shell       (bool, optional): Whether to invoke a shell or not. May be required for commands
+                                          Defaults to False.
         Returns:
             dict: Returns a dictionary object containing information about the command
             including the host, stdout, stderr, status code, and the command run on the
@@ -124,7 +125,7 @@ class ActionGroup(object):
             try:
                 stderr = channel.recv_stderr(3000).decode('utf-8')
                 if stderr == "detprompt":
-                    print("sending pass")
+                    #print("sending pass")
                     channel.sendall(password + "\n")
                 return True
             # TODO: Find out what to catch here
@@ -140,7 +141,11 @@ class ActionGroup(object):
         else:
             connection = self.connection
         transport = connection.get_transport()
+        
         channel = transport.open_channel("session")
+        if shell:
+            channel.get_pty()
+            #channel.invoke_shell()
         # Keep track of all our buffers
         retval = {
             'host': self.host,
@@ -212,16 +217,20 @@ class ActionGroup(object):
         return self.build_return("", "", "", 0, "get")
 
 
-    def local(self, command, stdin=None):
+    def local(self, command, stdin=None, sudo=False):
         """
         Execute a command. Shove stdin into it if requested
         """
-        proc = Popen(shlex.split(command), shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
+        proc = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
                      close_fds=True)
         if stdin:
-            proc.stdin.write(stdin)
-        stdout = proc.stdout.read().decode("utf-8")
-        stderr = proc.stderr.read().decode("utf-8")
+            stdout, stderr = proc.communicate(stdin)
+        else:
+            stdout, stderr = proc.communicate()
+        if sudo:
+            logging.warn("sudo on local command not implemented")
+        stdout = stdout.decode("utf-8")
+        stderr = stderr.decode("utf-8")
         status = proc.wait()
         return self.build_return("localhost", stdout, stderr, status, "local")
 

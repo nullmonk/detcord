@@ -12,14 +12,30 @@ class Threader(object):
         self.threads = []
         self.queues = {}
         self.conman = connection_manager
+        self.listener = {
+            "q": None,
+            "open": False
+        }
 
-    def run_action(self, action, host, username, password):
+    def run_action(self, action, host):
+        """Given an action function and a host dict, run the action on the host
+        """
         actiongroup = ActionGroup(
-            host=host,
-            user=username,
-            password=password
+            host=host['ip'],
+            user=host['user'],
+            password=host['password']
         )
+        host = host['ip']
         host = host.lower()
+        if not self.listener.get("open"):
+            self.listener['open'] = True
+            self.listener['q'] = Queue()
+            thread = threading.Thread(
+                target=action_listener,
+                args=(self.listener,)
+            )
+            self.threads.append(thread)
+            thread.start()
         if host not in self.queues:
             # Create a queue for the host
             self.queues[host] = Queue()
@@ -31,25 +47,47 @@ class Threader(object):
                 actiongroup.password
             )
             # Get an ssh connection for the thread to use
-            connection = self.conman.get_ssh_connection(host)
+            try:
+                connection = self.conman.get_ssh_connection(host)
+            except Exception as E:
+                print("[{}] [-]: Cannot connect to host".format(host))
+                return False
             thread = threading.Thread(
                 target=action_runner,
-                args=(connection, self.queues[host])
+                args=(connection, self.queues[host], self.listener['q'])
             )
             self.threads.append(thread)
             thread.start()
         self.queues[host].put((action, actiongroup))
+        #print("[{}] [+]: Connected to host".format(host))
+        return True
 
     def close(self):
         self.conman.close()
 
-def action_runner(connection, queue):
+def action_runner(connection, queue, output):
     while True:
         try:
             action, actiongroup = queue.get(timeout=THREAD_TIMEOUT)
         except:
             queue.task_done()
             return False
-        actiongroup.connection = connection
-        action(actiongroup)
+        try:
+            actiongroup.connection = connection
+            action(actiongroup)
+        except Exception as E:
+            output.put(str(E))
+    return True
+
+def action_listener(listener):
+    queue = listener.get("q")
+    while True:
+        try:
+            msg = queue.get(timeout=THREAD_TIMEOUT)
+        except:
+            listener['open'] = False
+            #queue.task_done()
+            queue = None
+            return False
+        print(msg)
     return True

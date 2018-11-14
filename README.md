@@ -16,6 +16,28 @@ actions to be run against a host.
 > Lots of improvements will be made to this tool over time. I will try to keep the `master` branch
 > stable but occasionally errors may occur
 
+## Installation
+To install the detcord package follow these steps. It is advised you do this in a virtual environment.
+
+__Build the virtual environment:__
+```
+python3 -m venv ../venv
+source ../venv/bin/activate
+```
+
+__Install the requirements:__
+```
+pip install -r requirements.txt
+```
+
+__Build and Install Detcord:__
+```
+python3 setup.py build
+python3 setup.py install
+```
+
+You may now call `detonate` from anywhere to start running actions.
+
 ## Usage
 Usage is fairly simple for running basic functions against a host. Create a `detfile.py` and import
 the actions that you will need for your deployment. In addition to each action, you will need to
@@ -54,7 +76,7 @@ def HelloWorld(host):
 
 To run your detfile, simply call det from the command line with the action you would like to run
 ```
-det HelloWorld
+detonate detfile.py HelloWorld
 ```
 
 To list all the actions in a detfile, run the det command without any arguments. The first line of
