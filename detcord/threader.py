@@ -50,7 +50,7 @@ class Threader(object):
             try:
                 connection = self.conman.get_ssh_connection(host)
             except Exception as E:
-                print("[{}] [-]: Cannot connect to host".format(host))
+                print("[{}] [-]: Cannot connect to host: {}".format(host, E))
                 return False
             thread = threading.Thread(
                 target=action_runner,
