@@ -27,7 +27,7 @@ source ../venv/bin/activate
 
 __Install the requirements:__
 ```
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 __Build and Install Detcord:__
