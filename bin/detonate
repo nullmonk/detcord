@@ -67,6 +67,8 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
             else:
                 # Run serialized
                 run_action(func, host)
+    #if threader:
+    #    threader.close()
 
 
 def update_hosts(hosts, env):
