@@ -35,7 +35,12 @@ def test(host):
         display(ret, file=outfile)
 
     # Put and push files to/from the server
-    host.put("README.md", "/tmp/README")
+    try:
+        host.put("README.md", "/tmp/README")
+    except PermissionError as E:
+        # Catch a permission denied error and try again as root
+        host.put("README.md", "/tmp/README", sudo=True)
+
     host.get("/tmp/README", "test.swp")
 
     # Get information about the commands run

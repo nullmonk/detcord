@@ -201,13 +201,30 @@ class ActionGroup(object):
         channel.close()
         return retval
 
-    def put(self, local, remote):
+    def put(self, local, remote, sudo=False, tmp=None):
         """
         Put a local file onto the remote host
+
+        Args:
+            local (str): the local file path to send
+            remote (str): the remote location to store the file
+            sudo (bool, optional): Whether to copy the file into a priviledged location
+            tmp (str, optional): if using sudo, the temporary location to write to, needs to be
+                                 accessable to the unprivledged user
         """
+        # If sudo, then move it into a temporary area
+        if sudo:
+            if not tmp:
+                tmp = "/tmp/det_tmp_file"
+            command = "mv {} {}".format(tmp, remote)
+            remote = tmp # The new upload loc. is tmp
+
         connection = self.get_connection()
         connection = connection.open_sftp()
         connection.put(local, remote)
+        #If we are using sudo, move the staged file to another location
+        if sudo:
+            self.run(command, sudo=True)
         return self.build_return("", "", "", 0, "put")
 
     def get(self, remote, local):
