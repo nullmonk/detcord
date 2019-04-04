@@ -4,6 +4,7 @@ Actions that you can run against a host
 # pylint: disable=too-many-arguments,fixme
 import socket
 import logging
+import time
 from subprocess import Popen, PIPE
 from . import CONNECTION_MANAGER
 from .exceptions import HostNotFound, NoConnection
@@ -123,12 +124,14 @@ class ActionGroup(object):
             channel.exec_command("sudo -kSp 'detprompt' " + command)
             channel.settimeout(1)
             try:
+                # Sleep here so that we receive all the sudo prompt data
+                # When sudo lectures the user, the 'detprompt' might not come
+                # in fast enough cause sudo to fail.
+                time.sleep(0.25)
                 stderr = channel.recv_stderr(3000).decode('utf-8')
-                if stderr == "detprompt":
-                    #print("sending pass")
+                if "detprompt" in stderr:
                     channel.sendall(password + "\n")
                 return True
-            # TODO: Find out what to catch here
             except socket.timeout:
                 # Timeout means no prompt which means root
                 return True
