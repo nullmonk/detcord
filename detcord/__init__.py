@@ -1,6 +1,10 @@
 """
 The primary module for detcord
 """
+# Work around to avoid cryptography warning
+import warnings
+warnings.filterwarnings(action='ignore',module='.*paramiko.*')
+
 from .manager import Manager
 from .exceptions import *
 
