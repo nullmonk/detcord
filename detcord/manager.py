@@ -50,6 +50,26 @@ class Manager(object):
             con = self.connect(host)
             self.manager[host]['ssh'] = con
         return con
+    
+    def set_ssh_connection(self, host, connection):
+        '''Set a direct connection to the object passed in for the given host.
+
+        Args:
+            host (str): The IP address of the host that the connection is established to
+            connection (paramiko.SSHClient): The SSHCLient connection that is already established
+        Returns:
+            bool: Whether or not the connection is alive and works
+        Throws:
+            HostNotFound: Error if the host is not in the known hosts
+        '''
+        host = host.lower()
+        if host not in self.manager:
+            raise HostNotFound("{} not in Manager".format(host))
+        if connection is None:
+            return False
+        
+        self.manager[host]['ssh'] = connection
+        return True
 
     def connect(self, host):
         """Create an SSH connection using the given data
