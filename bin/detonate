@@ -54,15 +54,6 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
     Returns:
         None
     """
-    # Implement the on_detcord_run callback
-    try:
-        detfile.on_detcord_run(
-            detfile=detfile.__file__,
-            actions=action_functions,
-            threading=threading
-        )
-    except AttributeError:
-        pass
     
     if threading:
         threader = Threader(CONNECTION_MANAGER)
@@ -77,15 +68,6 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
             else:
                 # Run serialized
                 run_action(func, host)
-                # Implement the on_detcord_action callback
-                try:
-                    detfile.on_detcord_action(
-                        detfile=detfile.__file__,
-                        host=host,
-                        action=action
-                    )
-                except AttributeError:
-                    pass
     #if threader:
     #    threader.close()
 
@@ -211,9 +193,42 @@ def main():
     # Create a mapping of all the hosts
     update_hosts(hosts, env)
 
+    # Call the on_detcord_begin() callback
+    try:
+        detfile.on_detcord_begin(
+            detfile=detfile.__file__,
+            actions=actions,
+            hosts=list(hosts.ips.keys()),
+            threading=env.get("threading", False)
+        )
+    except (AttributeError, TypeError) as E:
+        pass
+    
+    # Try to implement the following callbacks if they are in the detfile
+    global on_detcord_action
+    try:
+        on_detcord_action = detfile.on_detcord_action
+    except AttributeError:
+        # Def the function here so that everything can call __main__.on_detcord_action() without an error
+        def on_detcord_action(*args, **kwargs): pass
+    
+    global on_detcord_action_fail
+    try:
+        on_detcord_action_fail = detfile.on_detcord_action_fail
+    except AttributeError:
+        # Def the function here so that everything can call __main__.on_detcord_action() without an error
+        def on_detcord_action_fail(*args, **kwargs): pass
+
     # Actually run the actions
     loop_actions_and_hosts(hosts, actions, env.get("threading", False))
 
+    # Call the on_detcord_end() callback
+    try:
+        detfile.on_detcord_end(
+            detfile=detfile.__file__,
+        )
+    except (AttributeError, TypeError) as E:
+        pass
 
 
 if __name__ == '__main__':

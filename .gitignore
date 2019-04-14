@@ -106,3 +106,5 @@ detfile.py
 # vim
 *.swp
 topo.json
+
+*.temp.py
