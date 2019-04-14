@@ -37,7 +37,7 @@ def test(host):
     # Put and push files to/from the server
     try:
         host.put("README.md", "/tmp/README")
-    except PermissionError as E:
+    except PermissionError as _:
         # Catch a permission denied error and try again as root
         host.put("README.md", "/tmp/README", sudo=True)
 

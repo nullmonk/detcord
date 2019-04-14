@@ -43,6 +43,7 @@ class Hosts(object):
         except KeyError:
             return None
 
+
 def loop_actions_and_hosts(hosts, action_functions, threading=True):
     """Loop through all the actions in the given function array
     and all the hosts in the env
@@ -104,7 +105,6 @@ def update_hosts(hosts, env):
         if 'name' in data:
             hosts.add_alias(data['name'], data['ip'])
 
-            
 
 def get_functions(module):
     """Get the valid detcord action in the file that we can
@@ -122,9 +122,11 @@ def get_functions(module):
         raise InvalidDetfile("No runnable actions in detfile.py")
     return action_functions
 
+
 def usage():
     # Print valid functions that the detfile has with the docstring
     print("USAGE: {} <detfile> <action>[..<action>]".format(sys.argv[0]))
+
 
 def valid_actions(actions):
     func_strings = []
@@ -201,7 +203,7 @@ def main():
             hosts=list(hosts.ips.keys()),
             threading=env.get("threading", False)
         )
-    except (AttributeError, TypeError) as E:
+    except (AttributeError, TypeError) as _:
         pass
     
     # Try to implement the following callbacks if they are in the detfile
@@ -209,15 +211,13 @@ def main():
     try:
         on_detcord_action = detfile.on_detcord_action
     except AttributeError:
-        # Def the function here so that everything can call __main__.on_detcord_action() without an error
-        def on_detcord_action(*args, **kwargs): pass
+        pass
     
     global on_detcord_action_fail
     try:
         on_detcord_action_fail = detfile.on_detcord_action_fail
     except AttributeError:
-        # Def the function here so that everything can call __main__.on_detcord_action() without an error
-        def on_detcord_action_fail(*args, **kwargs): pass
+        pass
 
     # Actually run the actions
     loop_actions_and_hosts(hosts, actions, env.get("threading", False))
@@ -227,7 +227,7 @@ def main():
         detfile.on_detcord_end(
             detfile=detfile.__file__,
         )
-    except (AttributeError, TypeError) as E:
+    except (AttributeError, TypeError) as _:
         pass
 
 
