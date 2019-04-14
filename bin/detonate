@@ -129,10 +129,17 @@ def valid_actions(actions):
     func_strings = []
     for function in actions:
         docstring = function[1].__doc__
+        
         if docstring:
             docstring = docstring.strip().split('\n')[0].strip()
         else:
             docstring = "No description"
+        
+        # Get the module location of a function if its not in the detfile
+        detfile_name = os.path.splitext(os.path.basename(sys.argv[1]))[0]
+        if function[1].__module__ != detfile_name:
+            docstring += " - ({})".format(function[1].__module__)
+
         func_strings += ["{} - {}".format(function[0], docstring)]
     print("Valid actions for this detfile are:\n\t{}".format("\n\t".join(func_strings)))
 
