@@ -54,6 +54,16 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
     Returns:
         None
     """
+    # Implement the on_detcord_run callback
+    try:
+        detfile.on_detcord_run(
+            detfile=detfile.__file__,
+            actions=action_functions,
+            threading=threading
+        )
+    except AttributeError:
+        pass
+    
     if threading:
         threader = Threader(CONNECTION_MANAGER)
     else:
@@ -67,6 +77,15 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
             else:
                 # Run serialized
                 run_action(func, host)
+                # Implement the on_detcord_action callback
+                try:
+                    detfile.on_detcord_action(
+                        detfile=detfile.__file__,
+                        host=host,
+                        action=action
+                    )
+                except AttributeError:
+                    pass
     #if threader:
     #    threader.close()
 
@@ -132,8 +151,7 @@ def valid_actions(actions):
         
         # Get the module location of a function if its not in the detfile
         module_loc = ""
-        detfile_name = os.path.splitext(os.path.basename(sys.argv[1]))[0]
-        if function[1].__module__ != detfile_name:
+        if function[1].__module__ != detfile.__name__:
             module_loc = function[1].__module__
 
         # Get the docstring as a description
@@ -177,6 +195,7 @@ def main():
         "Please give atleast one valid action"
         usage()
         valid_actions(action_functions)
+        quit(1)
     # Make sure we are calling a valid action
     actions = sys.argv[2:]
     for action in actions:
@@ -193,7 +212,7 @@ def main():
     update_hosts(hosts, env)
 
     # Actually run the actions
-    loop_actions_and_hosts(hosts, actions, env.get("threading", True))
+    loop_actions_and_hosts(hosts, actions, env.get("threading", False))
 
 
 
