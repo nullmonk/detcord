@@ -10,16 +10,18 @@ env = {}  # pylint: disable=invalid-name
 env['user'] = 'root'
 env['pass'] = 'toor'
 env['hosts'] = ['localhost']
+env['silent'] = False     # Dont suppress output from the actions
 env['threading'] = False  # threading defaults to false
 
+
 def on_detcord_begin(detfile="", hosts=[], actions=[], threading=False):
-    print("Detcord has been launched. from '{}'\nHere are the actions and groups:\n{}\n{}\nThreading: {}".format(
-            detfile, actions, hosts, threading
+    print("Detcord has been launched. {}".format(
+            actions
         ))
 
 def on_detcord_action(host="", action="", return_value=None):
-    print("Detcord action '{}' has been run on {}. Here is the return value: {}".format(
-        action, host, return_value
+    print("Detcord action '{}' has been run on {}. return value? {}".format(
+        action, host, bool(return_value)
     ))
 
 def on_detcord_action_fail(host="", action="", exception=None):

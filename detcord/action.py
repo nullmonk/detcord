@@ -20,7 +20,7 @@ def action(function):
 
         # Hook stdout and error so that functions dont print. If this is wrapped, the 
         # return value of the function is the result
-        if host.env.get('silent', False):
+        if host.__dict__.get('env', {}).get('silent', False):
             retval = StringIO()  # If silent is true, the retval is now set
             sys.stdout = retval
             sys.stderr = retval
