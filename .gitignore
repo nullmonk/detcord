@@ -100,8 +100,9 @@ ENV/
 # mypy
 .mypy_cache/
 
-det
-detfile.py
+detonate
+./det
+detfile*.py
 
 # vim
 *.swp
