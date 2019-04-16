@@ -6,7 +6,7 @@ Can be called by a server
 Used by the detonate program as well
 """
 from .actiongroup import ActionGroup
-
+import __main__
 
 def is_valid_action(action):
     """Return whether or not the action function is a valid
@@ -34,7 +34,8 @@ def run_action(action, host):
     action_group = ActionGroup(
         host=host['ip'],
         user=host['user'],
-        password=host['password']
+        password=host['password'],
+        env=dict(__main__.env)
     )
     if not is_valid_action(action):
         # not a valid action

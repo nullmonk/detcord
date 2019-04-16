@@ -25,7 +25,8 @@ class Threader(object):
         actiongroup = ActionGroup(
             host=host['ip'],
             user=host['user'],
-            password=host['password']
+            password=host['password'],
+            env=dict(__main__.env)
         )
         host = host['ip']
         host = host.lower()

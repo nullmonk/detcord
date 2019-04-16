@@ -15,6 +15,7 @@ class ActionGroup(object):
     Create an action group to run against a host
     """
     def __init__(self, host, port=22, user=None, password=None, env={}):
+        self.env = env
         self.host = host
         self.port = port
         self.user = user
@@ -80,7 +81,7 @@ class ActionGroup(object):
         }
         return ret
 
-    def run(self, command: str, stdin=None, sudo=False, silent=True, interactive=False,
+    def run(self, command: str, stdin=None, sudo=False, interactive=False,
             connection=None, shell=False) -> dict:
         """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
@@ -90,8 +91,6 @@ class ActionGroup(object):
             command     (str):  The command to run on the remote host
             stdin       (str, optional):  The stdin to be passed into the running process
             sudo        (bool, optional): Whether or not the command should be run as sudo.
-                                          Defaults to False.
-            silent      (bool, optional): Whether or not to print the output coming from the hosts.
                                           Defaults to False.
             interactive (bool, optional): Whether or not the program requires further interaction.
                                           Defaults to False.
@@ -179,11 +178,6 @@ class ActionGroup(object):
             stdout, stderr = ActionGroup._read_buffers(channel)
             retval['stdout'] += stdout
             retval['stderr'] += stderr
-            # Print the lines if we can
-            if not silent and stdout:
-                print("[{}] [+]:".format(self.host), str(stdout.strip()))
-            if not silent and stderr:
-                print("[{}] [-]:".format(self.host), str(stderr.strip()))
         # Wait for the process to die
         retval['status'] = channel.recv_exit_status()
         # Process all data that came through after the proc died
@@ -192,11 +186,6 @@ class ActionGroup(object):
             stdout, stderr = ActionGroup._read_buffers(channel)
             retval['stdout'] += stdout
             retval['stderr'] += stderr
-            # Print the lines if we can
-            if not silent and stdout:
-                print("[{}] [+]:".format(self.host), str(stdout.strip()))
-            if not silent and stderr:
-                print("[{}] [-]:".format(self.host), str(stderr.strip()))
         # Close the channel
         channel.close()
         return retval
