@@ -1,6 +1,7 @@
 """
 The primary module for detcord
 """
+
 # Work around to avoid cryptography warning
 import warnings
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
@@ -8,14 +9,14 @@ warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 from .manager import Manager
 from .exceptions import *
 
+from .action import action
 # Create a host and connection manager
 CONNECTION_MANAGER = Manager()
 
 
-# Create a decorator for the action functions
-def action(actionf):
-    actionf.detcord_action = True
-    return actionf
+#def action(actionf):
+#    actionf.detcord_action = True
+#    return actionf
 
 # Simple display function for pretty printing
 def display(obj, **kwargs):

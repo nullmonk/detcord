@@ -43,6 +43,7 @@ class Hosts(object):
         except KeyError:
             return None
 
+
 def loop_actions_and_hosts(hosts, action_functions, threading=True):
     """Loop through all the actions in the given function array
     and all the hosts in the env
@@ -54,6 +55,7 @@ def loop_actions_and_hosts(hosts, action_functions, threading=True):
     Returns:
         None
     """
+    
     if threading:
         threader = Threader(CONNECTION_MANAGER)
     else:
@@ -103,7 +105,6 @@ def update_hosts(hosts, env):
         if 'name' in data:
             hosts.add_alias(data['name'], data['ip'])
 
-            
 
 def get_functions(module):
     """Get the valid detcord action in the file that we can
@@ -121,18 +122,34 @@ def get_functions(module):
         raise InvalidDetfile("No runnable actions in detfile.py")
     return action_functions
 
+
 def usage():
     # Print valid functions that the detfile has with the docstring
     print("USAGE: {} <detfile> <action>[..<action>]".format(sys.argv[0]))
+
 
 def valid_actions(actions):
     func_strings = []
     for function in actions:
         docstring = function[1].__doc__
+        
+        # Get the module location of a function if its not in the detfile
+        module_loc = ""
+        if function[1].__module__ != detfile.__name__:
+            module_loc = function[1].__module__
+
+        # Get the docstring as a description
         if docstring:
-            docstring = docstring.strip().split('\n')[0].strip()
+            docstring = docstring.strip().split('\n')[0].strip() # Get the first line of the docstring
+
+        if module_loc:
+            if docstring:
+                docstring += " - " + module_loc
+            else:
+                docstring = module_loc
         else:
             docstring = "No description"
+
         func_strings += ["{} - {}".format(function[0], docstring)]
     print("Valid actions for this detfile are:\n\t{}".format("\n\t".join(func_strings)))
 
@@ -162,6 +179,7 @@ def main():
         "Please give atleast one valid action"
         usage()
         valid_actions(action_functions)
+        quit(1)
     # Make sure we are calling a valid action
     actions = sys.argv[2:]
     for action in actions:
@@ -177,9 +195,40 @@ def main():
     # Create a mapping of all the hosts
     update_hosts(hosts, env)
 
-    # Actually run the actions
-    loop_actions_and_hosts(hosts, actions, env.get("threading", True))
+    # Call the on_detcord_begin() callback
+    try:
+        detfile.on_detcord_begin(
+            detfile=detfile.__file__,
+            actions=actions,
+            hosts=list(hosts.ips.keys()),
+            threading=env.get("threading", False)
+        )
+    except (AttributeError, TypeError) as _:
+        pass
+    
+    # Try to implement the following callbacks if they are in the detfile
+    global on_detcord_action
+    try:
+        on_detcord_action = detfile.on_detcord_action
+    except AttributeError:
+        pass
+    
+    global on_detcord_action_fail
+    try:
+        on_detcord_action_fail = detfile.on_detcord_action_fail
+    except AttributeError:
+        pass
 
+    # Actually run the actions
+    loop_actions_and_hosts(hosts, actions, env.get("threading", False))
+
+    # Call the on_detcord_end() callback
+    try:
+        detfile.on_detcord_end(
+            detfile=detfile.__file__,
+        )
+    except (AttributeError, TypeError) as _:
+        pass
 
 
 if __name__ == '__main__':

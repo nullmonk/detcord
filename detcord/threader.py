@@ -5,6 +5,8 @@ import threading
 from queue import Queue
 from .actiongroup import ActionGroup
 
+import __main__
+
 THREAD_TIMEOUT = 1
 
 class Threader(object):
@@ -23,7 +25,8 @@ class Threader(object):
         actiongroup = ActionGroup(
             host=host['ip'],
             user=host['user'],
-            password=host['password']
+            password=host['password'],
+            env=dict(__main__.env)
         )
         host = host['ip']
         host = host.lower()
@@ -50,7 +53,16 @@ class Threader(object):
             try:
                 connection = self.conman.get_ssh_connection(host)
             except Exception as E:
-                print("[{}] [-]: Cannot connect to host: {}".format(host, E))
+                if not __main__.env.get('silent', False):
+                    print("[{}] [-]: Cannot connect to host: {}".format(host, E))
+                try:
+                    __main__.on_detcord_action_fail(
+                        host=host,
+                        action=action.__name__,
+                        exception=E
+                    )
+                except (AttributeError, TypeError) as _:
+                    pass
                 return False
             thread = threading.Thread(
                 target=action_runner,
@@ -89,5 +101,6 @@ def action_listener(listener):
             #queue.task_done()
             queue = None
             return False
-        print(msg)
+        if not __main__.env.get('silent', False):        
+            print(msg)
     return True
