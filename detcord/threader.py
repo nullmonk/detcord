@@ -53,7 +53,8 @@ class Threader(object):
             try:
                 connection = self.conman.get_ssh_connection(host)
             except Exception as E:
-                print("[{}] [-]: Cannot connect to host: {}".format(host, E))
+                if not __main__.env.get('silent', False):
+                    print("[{}] [-]: Cannot connect to host: {}".format(host, E))
                 try:
                     __main__.on_detcord_action_fail(
                         host=host,
@@ -100,5 +101,6 @@ def action_listener(listener):
             #queue.task_done()
             queue = None
             return False
-        print(msg)
+        if not __main__.env.get('silent', False):        
+            print(msg)
     return True

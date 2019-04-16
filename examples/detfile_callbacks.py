@@ -25,8 +25,8 @@ def on_detcord_action(host="", action="", return_value=None):
     ))
 
 def on_detcord_action_fail(host="", action="", exception=None):
-    print("Detcord action '{}' has failed for {}. This is the exception: {}".format(
-        action, host, exception
+    print("Detcord action '{}' has failed for {}. Exception: {} ({})".format(
+        action, host, exception, type(exception)
     ))
 
 def on_detcord_end(detfile=""):

@@ -90,13 +90,11 @@ class Manager(object):
         return con
 
     def close(self):
-        print(self.manager)
-        '''
         for host in self.manager:
             con = host.get("ssh", False)
             if con:
                 con.close()
-        '''
+
 class SilentTreatmentPolicy(paramiko.MissingHostKeyPolicy):
     """Do nothing when we face keys"""
     def missing_host_key(self, *args):

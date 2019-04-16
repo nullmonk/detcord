@@ -135,8 +135,7 @@ class ActionGroup(object):
                 # Timeout means no prompt which means root
                 return True
             except Exception as exception:  # pylint: disable=broad-except
-                print(exception)
-                return False
+                raise ValueError("Sudo failed to run: {} ({})".format(exception, type(exception)))
         # Get the connection from the connection manager
         if self.connection is None:
             connection = self.get_connection()
