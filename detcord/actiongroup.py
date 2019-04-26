@@ -125,7 +125,7 @@ class ActionGroup(object):
             """
             # Generate a random string to use as the prompt
             prompt_string = "".join(random.sample(string.ascii_letters + string.digits, random.randint(5,15)))
-            channel.exec_command("sudo -kSp '{}' {}".format(prompt_string, command))
+            channel.exec_command("PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin sudo -kSp '{}' {}".format(prompt_string, command))
             channel.settimeout(1)
             try:
                 # Sleep here so that we receive all the sudo prompt data
