@@ -5,6 +5,9 @@ Actions that you can run against a host
 import socket
 import logging
 import time
+import string
+import random
+
 from subprocess import Popen, PIPE
 from . import CONNECTION_MANAGER
 from .exceptions import HostNotFound, NoConnection
@@ -120,7 +123,9 @@ class ActionGroup(object):
             Return:
                 bool: Whether or not the sudo worked
             """
-            channel.exec_command("sudo -kSp 'detprompt' " + command)
+            # Generate a random string to use as the prompt
+            prompt_string = "".join(random.sample(string.ascii_letters + string.digits, random.randint(5,15)))
+            channel.exec_command("PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin sudo -kSp '{}' {}".format(prompt_string, command))
             channel.settimeout(1)
             try:
                 # Sleep here so that we receive all the sudo prompt data
@@ -128,7 +133,7 @@ class ActionGroup(object):
                 # in fast enough cause sudo to fail.
                 time.sleep(0.25)
                 stderr = channel.recv_stderr(3000).decode('utf-8')
-                if "detprompt" in stderr:
+                if prompt_string in stderr:
                     channel.sendall(password + "\n")
                 return True
             except socket.timeout:
@@ -142,7 +147,7 @@ class ActionGroup(object):
         else:
             connection = self.connection
         transport = connection.get_transport()
-        
+
         channel = transport.open_channel("session")
         if shell:
             channel.get_pty()

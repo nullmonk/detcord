@@ -47,7 +47,11 @@ class Manager(object):
             raise HostNotFound("{} not in Manager".format(host))
         con = self.manager[host].get('ssh', None)
         if con is None:
-            con = self.connect(host)
+            try:
+                con = self.connect(host)
+            except paramiko.ssh_exception.SSHException as E:
+                con = self.connect(host)
+
             self.manager[host]['ssh'] = con
         return con
     
@@ -86,7 +90,9 @@ class Manager(object):
         con = paramiko.SSHClient()
         con.set_missing_host_key_policy(SilentTreatmentPolicy())
         con.load_system_host_keys()
-        con.connect(timeout=self.timeout, hostname=host, port=port, username=user, password=passwd)
+        con.get_host_keys().clear()
+        con.connect(timeout=self.timeout, hostname=host, port=port, username=user, password=passwd, look_for_keys=False,
+                    allow_agent=False)
         return con
 
     def close(self):
