@@ -47,7 +47,11 @@ class Manager(object):
             raise HostNotFound("{} not in Manager".format(host))
         con = self.manager[host].get('ssh', None)
         if con is None:
-            con = self.connect(host)
+            try:
+                con = self.connect(host)
+            except paramiko.ssh_exception.SSHException as E:
+                con = self.connect(host)
+
             self.manager[host]['ssh'] = con
         return con
     
