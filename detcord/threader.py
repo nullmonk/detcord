@@ -4,6 +4,7 @@ A thread management object
 import threading
 from queue import Queue
 from .actiongroup import ActionGroup
+from paramiko.ssh_exception import SSHException
 
 import __main__
 
@@ -51,7 +52,11 @@ class Threader(object):
             )
             # Get an ssh connection for the thread to use
             try:
-                connection = self.conman.get_ssh_connection(host)
+                try:
+                    connection = self.conman.get_ssh_connection(host)
+                except SSHException as E:
+                    print("Bad stuff happened but we are trying to fix it!", E)
+                    connection = self.conman.get_ssh_connection(host)
             except Exception as E:
                 if not __main__.env.get('silent', False):
                     print("[{}] [-]: Cannot connect to host: {}".format(host, E))
