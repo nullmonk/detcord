@@ -2,6 +2,7 @@
 Keep track of all credentials and connections per host
 """
 
+import os
 import paramiko
 from .exceptions import HostNotFound
 
@@ -14,7 +15,11 @@ class Manager(object):
         self.manager = {}
         self.default_pass = "changeme"
         self.default_user = "root"
-        self.timeout = 2
+        try:
+            self.timeout = int(os.environ.get("DETCORD_TIMEOUT"))
+        except (TypeError, ValueError):
+            self.timeout = 5
+        
 
     def remove_host(self, host):
         del self.manager[host.lower()]
