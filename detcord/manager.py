@@ -2,6 +2,7 @@
 Keep track of all credentials and connections per host
 """
 
+import os
 import paramiko
 from .exceptions import HostNotFound
 
@@ -14,8 +15,15 @@ class Manager(object):
         self.manager = {}
         self.default_pass = "changeme"
         self.default_user = "root"
-        self.timeout = 2
+        try:
+            self.timeout = int(os.environ.get("DETCORD_TIMEOUT"))
+        except (TypeError, ValueError):
+            self.timeout = 5
+        
 
+    def remove_host(self, host):
+        del self.manager[host.lower()]
+    
     def add_host(self, host, port=22, user=None, password=None):
         """Add a host to the host manager
 
@@ -89,7 +97,7 @@ class Manager(object):
         passwd = self.manager[host]['pass']
         con = paramiko.SSHClient()
         con.set_missing_host_key_policy(SilentTreatmentPolicy())
-        con.load_system_host_keys()
+        #con.load_system_host_keys()
         con.get_host_keys().clear()
         con.connect(timeout=self.timeout, hostname=host, port=port, username=user, password=passwd, look_for_keys=False,
                     allow_agent=False)
