@@ -19,7 +19,7 @@ class ActionGroup(object):
     """
     def __init__(self, host, port=22, user=None, password=None, env={}):
         self.env = env
-        self.host = host
+        self.host = host.strip()
         self.port = port
         self.user = user
         self.password = password

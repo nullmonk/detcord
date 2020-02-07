@@ -4,6 +4,7 @@ Keep track of all credentials and connections per host
 
 import os
 import paramiko
+import socket
 from .exceptions import HostNotFound
 
 class Manager(object):
@@ -22,7 +23,7 @@ class Manager(object):
         
 
     def remove_host(self, host):
-        del self.manager[host.lower()]
+        del self.manager[host.lower().strip()]
     
     def add_host(self, host, port=22, user=None, password=None):
         """Add a host to the host manager
@@ -37,10 +38,15 @@ class Manager(object):
             user = self.default_user
         if not password:
             password = self.default_pass
-        host = host.lower()
+        host = host.lower().strip()
+        try:
+            port = int(port)
+        except ValueError:
+            raise ValueError("[{}] Invalid option for port. Must be integer: {}".format(host, port))
+
         if host not in self.manager:
             self.manager[host] = {}
-        self.manager[host.lower()].update({
+        self.manager[host].update({
             'port': port,
             'user': user,
             'pass': password
@@ -50,16 +56,23 @@ class Manager(object):
         '''Get the connection for that host or create a
         new connection if none exists
         '''
-        host = host.lower()
+        def __con():
+            """Try twice"""
+            try:
+                return self.connect(host)
+            except paramiko.ssh_exception.SSHException as E:
+                return self.connect(host)
+        
+        host = host.lower().strip()
         if host not in self.manager:
             raise HostNotFound("{} not in Manager".format(host))
         con = self.manager[host].get('ssh', None)
         if con is None:
             try:
-                con = self.connect(host)
-            except paramiko.ssh_exception.SSHException as E:
-                con = self.connect(host)
-
+                con = __con()
+            except socket.gaierror as E:
+                if E.errno == -2:
+                    raise ValueError("{}: Invalid host given '{}'. Make sure your host is valid".format(str(E), host))
             self.manager[host]['ssh'] = con
         return con
     
@@ -74,7 +87,7 @@ class Manager(object):
         Throws:
             HostNotFound: Error if the host is not in the known hosts
         '''
-        host = host.lower()
+        host = host.lower().strip()
         if host not in self.manager:
             raise HostNotFound("{} not in Manager".format(host))
         if connection is None:
