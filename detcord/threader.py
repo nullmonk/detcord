@@ -30,7 +30,7 @@ class Threader(object):
             env=dict(__main__.env)
         )
         host = host['ip']
-        host = host.lower()
+        host = host.lower().strip()
         if not self.listener.get("open"):
             self.listener['open'] = True
             self.listener['q'] = Queue()
