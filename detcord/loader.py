@@ -8,6 +8,7 @@ Used by the detonate program as well
 from .actiongroup import ActionGroup
 import __main__
 
+
 def is_valid_action(action):
     """Return whether or not the action function is a valid
     detcord action
@@ -18,7 +19,7 @@ def is_valid_action(action):
     Returns:
         bool: Whether or not the action is valid
     """
-    return getattr(action, 'detcord_action', False) != False
+    return getattr(action, "detcord_action", False) != False
 
 
 def run_action(action, host):
@@ -32,10 +33,10 @@ def run_action(action, host):
         bool: Whether or not the action ran
     """
     action_group = ActionGroup(
-        host=host['ip'],
-        user=host['user'],
-        password=host['password'],
-        env=dict(__main__.env)
+        host=host["ip"],
+        user=host["user"],
+        password=host["password"],
+        env=dict(__main__.env),
     )
     if not is_valid_action(action):
         # not a valid action

@@ -3,6 +3,7 @@ Various tools that can be importe and used by detfiles
 """
 import datetime
 import re
+
 # pylint: disable=unused-import
 from urllib.request import urlretrieve as wget
 
@@ -17,8 +18,8 @@ def strip_colors(string: str) -> str:
     Returns:
         str: The new string without all the ANSI escapes
     """
-    ansicodes = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-    return ansicodes.sub('', string)
+    ansicodes = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+    return ansicodes.sub("", string)
 
 
 def save_results(path, result):
@@ -36,22 +37,23 @@ def save_results(path, result):
     """
     try:
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(path, 'a') as outf:
-            outf.write(now+"\n")
-            outf.write(result.get('stdout', ''))
+        with open(path, "a") as outf:
+            outf.write(now + "\n")
+            outf.write(result.get("stdout", ""))
             outf.write("\n-- Stderr --\n")
-            outf.write(result.get('stderr', ''))
+            outf.write(result.get("stderr", ""))
         return True
     except IOError as exception:
         print(exception)
         return False
 
+
 def log_action(action, host=""):
-    '''Write a log to a logfile
-    '''
+    """Write a log to a logfile
+    """
     try:
         now = datetime.datetime.now().strftime("%H:%M:%S")
-        with open("logs/actions.log", 'a') as outf:
+        with open("logs/actions.log", "a") as outf:
             outf.write("{}: [{}] {}\n".format(now, host, action))
         return True
     except IOError:

@@ -17,6 +17,7 @@ class ActionGroup(object):
     """
     Create an action group to run against a host
     """
+
     def __init__(self, host, port=22, user=None, password=None, env={}):
         self.env = env
         self.host = host.strip()
@@ -44,13 +45,14 @@ class ActionGroup(object):
             try:
                 connection = CONNECTION_MANAGER.get_ssh_connection(self.host)
             except HostNotFound:
-                CONNECTION_MANAGER.add_host(self.host, self.port, self.user, self.password)
+                CONNECTION_MANAGER.add_host(
+                    self.host, self.port, self.user, self.password
+                )
                 continue
             break
         if not connection:
             raise NoConnection("Cannot create a connection for " + self.host)
         return connection
-
 
     def build_return(self, host="", stdout="", stderr="", status=0, command=""):
         """Build a dictionary to be returned as the result of a command.
@@ -76,16 +78,23 @@ class ActionGroup(object):
         if host == "":
             host = self.host
         ret = {
-            'host': host,
-            'stdout': stdout,
-            'stderr': stderr,
-            'status': status,
-            'command': command
+            "host": host,
+            "stdout": stdout,
+            "stderr": stderr,
+            "status": status,
+            "command": command,
         }
         return ret
 
-    def run(self, command: str, stdin=None, sudo=False, interactive=False,
-            connection=None, shell=False) -> dict:
+    def run(
+        self,
+        command: str,
+        stdin=None,
+        sudo=False,
+        interactive=False,
+        connection=None,
+        shell=False,
+    ) -> dict:
         """Run a program on the remote host. stdin can be passed into the program for scripts
         execution. Interactive mode does not shutdown stdin until the status has closed, do not use
         interactive with commands that read from stdin constantly (e.x. 'bash').
@@ -112,6 +121,7 @@ class ActionGroup(object):
                     'command': command
                 }
         """
+
         def send_sudo(channel, command, password):
             """Upgrade the command to sudo using the given password.
 
@@ -124,15 +134,23 @@ class ActionGroup(object):
                 bool: Whether or not the sudo worked
             """
             # Generate a random string to use as the prompt
-            prompt_string = "".join(random.sample(string.ascii_letters + string.digits, random.randint(5,15)))
-            channel.exec_command("PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin sudo -kSp '{}' {}".format(prompt_string, command))
+            prompt_string = "".join(
+                random.sample(
+                    string.ascii_letters + string.digits, random.randint(5, 15)
+                )
+            )
+            channel.exec_command(
+                "PATH=$PATH:/usr/sbin:/usr/bin:/sbin:/bin sudo -kSp '{}' {}".format(
+                    prompt_string, command
+                )
+            )
             channel.settimeout(1)
             try:
                 # Sleep here so that we receive all the sudo prompt data
                 # When sudo lectures the user, the 'detprompt' might not come
                 # in fast enough cause sudo to fail.
                 time.sleep(0.25)
-                stderr = channel.recv_stderr(3000).decode('utf-8')
+                stderr = channel.recv_stderr(3000).decode("utf-8")
                 if prompt_string in stderr:
                     channel.sendall(password + "\n")
                 return True
@@ -140,7 +158,10 @@ class ActionGroup(object):
                 # Timeout means no prompt which means root
                 return True
             except Exception as exception:  # pylint: disable=broad-except
-                raise ValueError("Sudo failed to run: {} ({})".format(exception, type(exception)))
+                raise ValueError(
+                    "Sudo failed to run: {} ({})".format(exception, type(exception))
+                )
+
         # Get the connection from the connection manager
         if self.connection is None:
             connection = self.get_connection()
@@ -151,14 +172,14 @@ class ActionGroup(object):
         channel = transport.open_channel("session")
         if shell:
             channel.get_pty()
-            #channel.invoke_shell()
+            # channel.invoke_shell()
         # Keep track of all our buffers
         retval = {
-            'host': self.host,
-            'stdout': "",
-            'stderr': "",
-            'status': 0,
-            'command': command
+            "host": self.host,
+            "stdout": "",
+            "stderr": "",
+            "status": 0,
+            "command": command,
         }
         # Use sudo if asked, pass in the correct password to the sudo binary
         if sudo:
@@ -180,16 +201,16 @@ class ActionGroup(object):
         while not channel.exit_status_ready():
             # pylint: disable=undefined-variable
             stdout, stderr = ActionGroup._read_buffers(channel)
-            retval['stdout'] += stdout
-            retval['stderr'] += stderr
+            retval["stdout"] += stdout
+            retval["stderr"] += stderr
         # Wait for the process to die
-        retval['status'] = channel.recv_exit_status()
+        retval["status"] = channel.recv_exit_status()
         # Process all data that came through after the proc died
         while channel.recv_ready() or channel.recv_stderr_ready():
             # pylint: disable=undefined-variable
             stdout, stderr = ActionGroup._read_buffers(channel)
-            retval['stdout'] += stdout
-            retval['stderr'] += stderr
+            retval["stdout"] += stdout
+            retval["stderr"] += stderr
         # Close the channel
         channel.close()
         return retval
@@ -210,12 +231,12 @@ class ActionGroup(object):
             if not tmp:
                 tmp = "/tmp/det_tmp_file"
             command = "mv {} {}".format(tmp, remote)
-            remote = tmp # The new upload loc. is tmp
+            remote = tmp  # The new upload loc. is tmp
 
         connection = self.get_connection()
         connection = connection.open_sftp()
         connection.put(local, remote)
-        #If we are using sudo, move the staged file to another location
+        # If we are using sudo, move the staged file to another location
         if sudo:
             self.run(command, sudo=True)
         return self.build_return("", "", "", 0, "put")
@@ -229,13 +250,13 @@ class ActionGroup(object):
         connection.get(remote, local)
         return self.build_return("", "", "", 0, "get")
 
-
     def local(self, command, stdin=None, sudo=False):
         """
         Execute a command. Shove stdin into it if requested
         """
-        proc = Popen(command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE,
-                     close_fds=True)
+        proc = Popen(
+            command, shell=True, stdout=PIPE, stderr=PIPE, stdin=PIPE, close_fds=True
+        )
         if stdin:
             stdout, stderr = proc.communicate(stdin)
         else:
@@ -259,23 +280,22 @@ class ActionGroup(object):
         Returns:
             tuple: A tuple containing the stdout and stderr
         """
-        stdout = b''
-        stderr = b''
+        stdout = b""
+        stderr = b""
         char = None
         # Loop until there is nothing to get or we hit a newline
         out_ready = channel.recv_ready()
-        while out_ready and char != b'\n':
+        while out_ready and char != b"\n":
             char = channel.recv(1)
             stdout += char
             out_ready = channel.recv_ready()
         # Do the same for stderr
         err_ready = channel.recv_stderr_ready()
-        while err_ready and char != b'\n':
+        while err_ready and char != b"\n":
             char = channel.recv_stderr(1)
             stderr += char
             err_ready = channel.recv_stderr_ready()
-        return stdout.decode('utf-8'), stderr.decode('utf-8')
-
+        return stdout.decode("utf-8"), stderr.decode("utf-8")
 
     def close(self):
         """What to do when closing the object?

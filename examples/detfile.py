@@ -1,24 +1,25 @@
-'''
+"""
 detcord : Action execution on hosts
 
 Micah Martin - knif3
-'''
+"""
 
 from detcord import action, display
 
 env = {}  # pylint: disable=invalid-name
-env['user'] = 'root'
-env['pass'] = 'toor'
-env['hosts'] = ['localhost']
-env['threading'] = False  # threading defaults to false
+env["user"] = "root"
+env["pass"] = "toor"
+env["hosts"] = ["localhost"]
+env["threading"] = False  # threading defaults to false
+
 
 @action
 def test(host):
-    '''
+    """
     A test action for the detcord project
 
     Showcases the commands that can be run
-    '''
+    """
     # You can run simple commands
     ret = host.run("echo welcome to detcord")
     # You can pass a script to be piped into the process
@@ -45,12 +46,12 @@ def test(host):
 
     # Get information about the commands run
     ret = host.run("not_a_real_command")
-    if ret.get('status', 1) != 0:
+    if ret.get("status", 1) != 0:
         print("Command failed to run!")
 
 
 def support_action():
-    '''
+    """
     This function is not a detfile action and cannot be called with det
-    '''
+    """
     pass
