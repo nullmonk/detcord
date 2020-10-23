@@ -27,6 +27,7 @@ class Threader(object):
             host=host['ip'],
             user=host['user'],
             password=host['password'],
+            port=host['port'],
             env=dict(__main__.env)
         )
         host = host['ip']

@@ -35,6 +35,7 @@ def run_action(action, host):
         host=host['ip'],
         user=host['user'],
         password=host['password'],
+        port=host['port'],
         env=dict(__main__.env)
     )
     if not is_valid_action(action):
