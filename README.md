@@ -32,7 +32,7 @@ pip3 install -r requirements.txt
 
 __Build and Install Detcord:__
 ```
-pip3 install git+git://github.com/micahjmartin/detcord.git
+pip3 install git+https://github.com/micahjmartin/detcord.git
 ```
 
 You may now call `detonate` from anywhere to start running actions.
